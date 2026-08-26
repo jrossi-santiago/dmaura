@@ -4,12 +4,12 @@ A waitlist site and the tool behind it.
 
 ```
 index.html            the early-access page — waitlist capture, posts to Formspree
-fonts/                self-hosted variable faces (Bodoni Moda, Newsreader, DM Mono)
+fonts/                self-hosted variable faces (Bodoni Moda, DM Mono)
                       — the landing page only; the tool uses system faces
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
   sw.js               service worker, cache-first shell (bump CACHE on deploy)
-  manifest.webmanifest, icon.svg, icon-*.png   envelope mark on vermilion
+  manifest.webmanifest, icon.svg, icon-*.png   paper-plane mark on vermilion
   sample-leads.csv    example import, including rows with no numeric id
 ```
 
@@ -26,10 +26,14 @@ copy Formspree returns, and a success panel that echoes the address it captured.
 A hidden `_gotcha` field catches bots.
 
 Two plates: vermilion for the pitch and the form, near-black for the product.
-Display type is Bodoni Moda, switching between roman and italic mid-phrase as a
-system rather than as an accent on one word. DM Mono carries the marginalia,
-Newsreader the reading copy. All three are self-hosted — no render-blocking
-third-party request, and no reader's IP goes to a font CDN to load a signup page.
+Display type is Bodoni Moda at 700 — a didone's hairlines disappear into a flat
+vermilion with a press texture over it, so the headline is set bold and the
+texture is held at 24% rather than letting the type thin out. It still switches
+between roman and italic mid-phrase as a system rather than as an accent on one
+word. DM Mono carries the marginalia; the reading copy is the plain system sans,
+the same stack the tool uses. Both self-hosted faces are served from `fonts/` —
+no render-blocking third-party request, and no reader's IP goes to a font CDN to
+load a signup page.
 
 Every colour pair on the vermilion was checked rather than eyeballed: ink at 72%
 opacity over that orange is only 3.2:1, so body copy, marginalia and labels are
@@ -49,7 +53,7 @@ true instead.
 
 # The tool
 
-The tool and the site are one brand: the same envelope mark, the same
+The tool and the site are one brand: the same paper-plane mark, the same
 vermilion, bone and ink. Two deliberate differences. The tool's vermilion is
 `#D8460F` rather than the landing's `#F2521C`, because the accent is used as
 *text* there and `#F2521C` is only 3.7:1 on a light surface. And the tool sets

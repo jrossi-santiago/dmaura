@@ -7,6 +7,7 @@
 <meta name="description" content="Import your list, tap once, and X opens with the message already written. No bots, no API keys. Join the early access list." />
 <meta name="theme-color" content="#0D0C0B" />
 <link rel="icon" href="app/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="app/icon-180.png" />
 <meta property="og:title" content="DM Aura — early access" />
 <meta property="og:description" content="Import your list, tap once, and X opens with the message already written. No bots, no API keys." />
 <meta property="og:type" content="website" />
@@ -17,10 +18,11 @@
 <style>
 /* ══════════════════════════════════════════════════════════════════
    DM AURA — early access
-   Poster typography: a vermilion plate and a black plate, set in a
-   high-contrast didone that switches between roman and italic
-   mid-phrase. Mono carries the marginalia. Nothing is centred by
-   default and nothing is decorative for its own sake.
+   Poster typography: a vermilion plate and a black plate, headed in a
+   bold didone that switches between roman and italic mid-phrase. Mono
+   carries the marginalia and a plain system sans carries the reading
+   copy. Nothing is centred by default and nothing is decorative for
+   its own sake.
    ══════════════════════════════════════════════════════════════════ */
 @font-face{
   font-family:"Bodoni Moda"; font-style:normal; font-weight:400 800; font-display:swap;
@@ -35,11 +37,6 @@
 @font-face{
   font-family:"DM Mono"; font-style:normal; font-weight:400; font-display:swap;
   src:url(fonts/dm-mono-latin.woff2) format("woff2");
-  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
-}
-@font-face{
-  font-family:"Newsreader"; font-style:normal; font-weight:200 800; font-display:swap;
-  src:url(fonts/newsreader-latin.woff2) format("woff2");
   unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
 }
 
@@ -58,7 +55,7 @@
   --cream-2:rgba(247,242,233,.62);
 
   --display:"Bodoni Moda",Didot,"Bodoni MT",Georgia,serif;
-  --read:"Newsreader",Iowan Old Style,Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
   --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 
   --pad:clamp(20px, 3.6vw, 48px);
@@ -69,8 +66,7 @@
 html{-webkit-text-size-adjust:100%}
 body{
   margin:0; background:var(--ground); color:var(--ink);
-  font-family:var(--read); font-size:16px; line-height:1.5;
-  -webkit-font-smoothing:antialiased;
+  font-family:var(--sans); font-size:16px; line-height:1.5;
 }
 ::selection{background:var(--cyan); color:var(--ink)}
 button,input{font:inherit;color:inherit}
@@ -96,7 +92,7 @@ button,input{font:inherit;color:inherit}
   display:flex; flex-direction:column; min-width:0; position:relative; overflow:hidden;
 }
 .leaf::after{ /* press texture, so the flat vermilion isn't a screen fill */
-  content:""; position:absolute; inset:0; pointer-events:none; opacity:.38; mix-blend-mode:multiply;
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.24; mix-blend-mode:multiply;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='130' height='130' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");
 }
 .leaf > *{position:relative; z-index:1}
@@ -114,12 +110,12 @@ button,input{font:inherit;color:inherit}
 /* ── headline ───────────────────────────────────────────────────── */
 .body{flex:1; display:flex; flex-direction:column; justify-content:center; min-width:0}
 h1{
-  font-family:var(--display); font-weight:500;
+  font-family:var(--display); font-weight:700;
   font-size:clamp(2.9rem, 6.6vw, 5.1rem); line-height:.94;
   letter-spacing:-.017em; margin:0; color:var(--ink);
 }
 h1 span{display:block}
-h1 em{font-style:italic; font-weight:400}
+h1 em{font-style:italic; font-weight:600}
 h1 .tight{letter-spacing:-.03em}
 
 .kicker{
@@ -130,8 +126,8 @@ h1 .tight{letter-spacing:-.03em}
 .kicker b{font-weight:400}
 
 .deck{
-  margin:clamp(16px,2.6vh,22px) 0 0; max-width:34rem;
-  font-size:1.0625rem; line-height:1.66; color:var(--ink);
+  margin:clamp(16px,2.6vh,22px) 0 0; max-width:33rem;
+  font-size:1rem; line-height:1.62; color:var(--ink);
 }
 .deck mark{
   background:var(--cyan); color:var(--ink); font-family:var(--display);
@@ -214,10 +210,10 @@ form{margin-top:clamp(22px,3.6vh,34px)}
 
 /* ── success ────────────────────────────────────────────────────── */
 .done{display:none}
-.done h2{font-family:var(--display); font-weight:500; font-size:clamp(2.4rem,5vw,3.6rem);
+.done h2{font-family:var(--display); font-weight:700; font-size:clamp(2.4rem,5vw,3.6rem);
   line-height:.98; letter-spacing:-.02em; margin:0 0 1.1rem}
-.done h2 em{font-style:italic; font-weight:400}
-.done p{margin:0 0 .9rem; color:var(--ink-2); max-width:31rem; line-height:1.66}
+.done h2 em{font-style:italic; font-weight:600}
+.done p{margin:0 0 .9rem; color:var(--ink-2); max-width:31rem; line-height:1.62}
 .done .stamp{display:inline-block; margin-top:18px; padding:8px 14px; border:1px solid var(--ink); color:var(--ink)}
 body[data-sent] .pitch, body[data-sent] form{display:none}
 body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
@@ -248,7 +244,7 @@ body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
   font-family:var(--mono); font-size:.6rem; letter-spacing:.02em; color:var(--panel); font-weight:500;
 }
 .dm .nm{flex:1; min-width:0}
-.dm .nm b{display:block; font-family:var(--read); font-size:.87rem; font-weight:600; color:var(--cream);
+.dm .nm b{display:block; font-family:var(--sans); font-size:.87rem; font-weight:600; color:var(--cream);
   line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .dm .nm span{display:block; font-family:var(--mono); font-size:.62rem; letter-spacing:.05em; color:var(--cream-2)}
 .dm .tag{
@@ -256,7 +252,7 @@ body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
   color:var(--cyan); border:1px solid rgba(169,222,232,.4); padding:2px 6px; border-radius:2px;
 }
 .dm .tag.man{color:var(--cream-2); border-color:rgba(247,242,233,.24)}
-.dm p{margin:0; font-family:var(--read); font-size:.9rem; line-height:1.52; color:rgba(247,242,233,.9)}
+.dm p{margin:0; font-family:var(--sans); font-size:.885rem; line-height:1.55; color:rgba(247,242,233,.9)}
 .dm .ft{display:flex; align-items:center; gap:8px; margin-top:11px; padding-top:9px;
   border-top:1px solid rgba(247,242,233,.08); font-family:var(--mono); font-size:.58rem;
   letter-spacing:.11em; text-transform:uppercase; color:var(--cream-2)}
@@ -308,8 +304,8 @@ h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.
     <div class="rail anim">
       <a class="wm" href="./">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect class="mk" x="2.6" y="5" width="18.8" height="14" rx="2.6"/>
-          <path class="mk" d="M3.4 6.7 12 13.1l8.6-6.4"/>
+          <path class="mk" d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/>
+          <path class="mk" d="M21.3 2.9 10.9 13.6"/>
         </svg>
         <span class="mono">DM&nbsp;<i>Aura</i></span>
       </a>
@@ -317,7 +313,7 @@ h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.
       <span class="glyphs" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
         <svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>
-        <svg viewBox="0 0 24 24"><path d="M21.4 2.6a1 1 0 0 0-1.1-.2l-18 8a1 1 0 0 0 .1 1.9l7.3 2.1 2.1 7.3a1 1 0 0 0 1.9.1l8-18a1 1 0 0 0-.3-1.2z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
       </span>
       <span class="mono">Early access: <i>closed beta</i></span>
     </div>
