@@ -24,7 +24,6 @@
   --sheet-shadow:0 -8px 40px rgba(20,18,16,.24);
   --r:14px; --r-sm:10px;
   --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",sans-serif;
-  --read:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){
@@ -146,7 +145,7 @@ a{color:var(--send)}
 .dmbtn.manual svg{fill:var(--send)}
 .dmbtn .cap{position:absolute;bottom:6px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;font-weight:680;color:var(--muted)}
 .empty{padding:56px 24px;text-align:center;color:var(--muted)}
-.empty h2{font-family:var(--read);font-size:21px;font-weight:400;color:var(--ink);margin:0 0 8px}
+.empty h2{font-family:var(--ui);font-size:20px;font-weight:640;letter-spacing:-.015em;color:var(--ink);margin:0 0 8px}
 .empty p{font-size:14px;margin:0 auto 16px;max-width:36ch;line-height:1.6}
 .selbar{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--ink);color:var(--ground);border-radius:10px;margin:10px 14px -2px;font-size:13.5px;flex-wrap:wrap}
 .selbar b{font-family:var(--mono)}
@@ -334,7 +333,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 <div class="app">
   <header class="topbar">
     <div class="brandrow">
-      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.6" y="5" width="18.8" height="14" rx="2.6"/><path d="M3.4 6.7 12 13.1l8.6-6.4"/></svg></span>
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/><path d="M21.3 2.9 10.9 13.6"/></svg></span>
       <h1 class="brand">DM Aura</h1>
       <span class="spacer"></span>
       <button class="iconbtn" id="btnStats" title="Your numbers" aria-label="Your numbers"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
