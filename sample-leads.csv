@@ -1,0 +1,6 @@
+id,screen_name,name,description,followers_count,friends_count,location,url,profile_image_url,verified
+44196397,elonmusk,Elon Musk,"Technoking. Building rockets and cars.",180000000,900,Texas,https://x.com,https://example.com/a.jpg,true
+745273,naval,Naval,"Angel investor. Building things. Reading about everything.",2400000,1200,San Francisco,https://nav.al,https://example.com/b.jpg,true
+1310086,patio11,Patrick McKenzie,"Writes about software businesses, pricing and payments.",180000,900,Tokyo,https://kalzumeus.com,,false
+,swyx,Shawn Wang,"Writing about AI engineering and dev tooling.",120000,2400,Singapore,https://swyx.io,,false
+https://x.com/dhh,dhh,David Heinemeier Hansson,"Creator of Rails. Partner at 37signals.",520000,400,Chicago,https://hey.com,,true
