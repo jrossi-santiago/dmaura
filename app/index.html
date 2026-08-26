@@ -5,23 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="Reach" />
+<meta name="apple-mobile-web-app-title" content="DM Aura" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="description" content="A DM outreach sheet for X. Import a list, tap once, send." />
-<meta name="theme-color" content="#2563EB" />
+<meta name="theme-color" content="#D8460F" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icon-180.png" />
-<title>Reach — DM sheet for X</title>
+<title>DM Aura — DM sheet for X</title>
 <style>
 :root{
-  --ground:#F1F3F6; --surface:#FFFFFF; --surface-2:#F6F8FA; --sunk:#E7EAEF;
-  --line:#DBE0E7; --line-soft:#E9ECF1;
-  --ink:#101319; --ink-2:#454C59; --muted:#7A828F;
-  --send:#2563EB; --send-press:#1D4ED8; --on-send:#FFFFFF;
-  --good:#12855A; --warn:#B4682F; --bad:#BB3B3B; --slate:#5E6B7C; --violet:#6A54C9;
-  --shadow:0 1px 2px rgba(16,19,25,.05), 0 8px 24px rgba(16,19,25,.06);
-  --sheet-shadow:0 -8px 40px rgba(16,19,25,.22);
+  --ground:#EFE9DC; --surface:#FBF7EF; --surface-2:#F4EEE2; --sunk:#E4DCCB;
+  --line:#DCD1BD; --line-soft:#E9E2D4;
+  --ink:#141210; --ink-2:#4C463D; --muted:#6E6558;
+  --send:#D8460F; --send-press:#B93A0B; --on-send:#FFF9F2;
+  --good:#0F7382; --warn:#A35A1F; --bad:#B03A2E; --slate:#6B6055; --violet:#7A4A9E;
+  --shadow:0 1px 2px rgba(20,18,16,.05), 0 8px 24px rgba(20,18,16,.07);
+  --sheet-shadow:0 -8px 40px rgba(20,18,16,.24);
   --r:14px; --r-sm:10px;
   --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",sans-serif;
   --read:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
@@ -29,13 +29,13 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ground:#0B0D11; --surface:#14171D; --surface-2:#1A1E25; --sunk:#07090C;
-    --line:#282D37; --line-soft:#20242B;
-    --ink:#E8EBF0; --ink-2:#A8B1BF; --muted:#77808D;
-    --send:#4F8DF7; --send-press:#3D7CEA; --on-send:#07142C;
-    --good:#3FBE8C; --warn:#D89257; --bad:#DC7676; --slate:#8B98A8; --violet:#9E8BEC;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
-    --sheet-shadow:0 -8px 44px rgba(0,0,0,.6);
+    --ground:#0C0B0A; --surface:#151311; --surface-2:#201C19; --sunk:#070605;
+    --line:#2E2823; --line-soft:#241F1B;
+    --ink:#F7F2E9; --ink-2:#B8AF9F; --muted:#8A8073;
+    --send:#FF6A38; --send-press:#E8551F; --on-send:#1A0B04;
+    --good:#A9DEE8; --warn:#E0A15E; --bad:#E08479; --slate:#9C9184; --violet:#C39BE8;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.4);
+    --sheet-shadow:0 -8px 44px rgba(0,0,0,.65);
   }
 }
 :root[data-theme="dark"]{
@@ -71,8 +71,8 @@ a{color:var(--send)}
   padding:max(10px,env(safe-area-inset-top)) 14px 0; border-bottom:1px solid var(--line-soft);
 }
 .brandrow{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.mark{width:27px;height:27px;border-radius:8px;background:var(--ink);display:grid;place-items:center;flex:none}
-.mark svg{width:15px;height:15px;fill:var(--ground)}
+.mark{width:27px;height:27px;border-radius:8px;background:var(--send);display:grid;place-items:center;flex:none}
+.mark svg{width:15px;height:15px;fill:none;stroke:var(--on-send);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .brand{font-size:16.5px;font-weight:680;letter-spacing:-.015em;margin:0;white-space:nowrap}
 @media (max-width:390px){ .brand{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)} }
 .brandrow .spacer{flex:1}
@@ -334,8 +334,8 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 <div class="app">
   <header class="topbar">
     <div class="brandrow">
-      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 3L3 10.5l7.2 2.6L13 21l8-18zm-9.4 11.2l-.6 4.1"/><path d="M21 3L3 10.5l7.4 2.7L21 3zm0 0l-10.6 10.2 2.4 7.5L21 3z"/></svg></span>
-      <h1 class="brand">Reach</h1>
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.6" y="5" width="18.8" height="14" rx="2.6"/><path d="M3.4 6.7 12 13.1l8.6-6.4"/></svg></span>
+      <h1 class="brand">DM Aura</h1>
       <span class="spacer"></span>
       <button class="iconbtn" id="btnStats" title="Your numbers" aria-label="Your numbers"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
       <button class="iconbtn" id="btnTpl" title="Message templates" aria-label="Message templates"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>
@@ -496,7 +496,8 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
    reconcile last-write-wins without reshaping any of this.
 ==================================================================== */
 
-const KEY_PREFIX = "reach.v1.";
+const KEY_PREFIX = "dmaura.v1.";
+const LEGACY_KEY  = "reach.v1.default";   // pre-rename store, migrated on first load
 const uid = () => (crypto.randomUUID ? crypto.randomUUID()
   : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
       const r = Math.random()*16|0; return (c==="x"?r:(r&0x3|0x8)).toString(16);
@@ -561,7 +562,16 @@ const cacheKey = () => KEY_PREFIX + "default";
 
 function load(){
   try{
-    const raw = localStorage.getItem(cacheKey());
+    let raw = localStorage.getItem(cacheKey());
+    if(!raw){
+      // Anyone who used the tool under its old name keeps their leads.
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if(legacy){
+        raw = legacy;
+        localStorage.setItem(cacheKey(), legacy);
+        localStorage.removeItem(LEGACY_KEY);
+      }
+    }
     if(!raw) return blank();
     const d = JSON.parse(raw);
     const base = blank();
@@ -664,7 +674,8 @@ function copyText(s){
   return Promise.resolve();
 }
 
-const AV_COLORS = ["#2563EB","#12855A","#B4682F","#6A54C9","#BB3B3B","#0E7490","#9333EA","#C2410C"];
+// Warm-side hues only: blues and violets fought the vermilion ground.
+const AV_COLORS = ["#D8460F","#A35A1F","#0F7382","#7A4A9E","#B03A2E","#6B6055","#8A6D1F","#1C6E5A"];
 function avColor(seed){
   let h = 0; const s = String(seed||"?");
   for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
@@ -1911,7 +1922,7 @@ function openStats(){
   const ringHTML = goal ? `
     <div class="ring ${n>=goal?"done":""}">
       <svg viewBox="0 0 76 76"><circle class="trk" cx="38" cy="38" r="${R}"></circle>
-        <circle class="val" cx="38" cy="38" r="${R}" stroke-dasharray="${(C*pct).toFixed(1)} ${C.toFixed(1)}"></circle></svg>
+        ${pct > 0 ? `<circle class="val" cx="38" cy="38" r="${R}" stroke-dasharray="${(C*pct).toFixed(1)} ${C.toFixed(1)}"></circle>` : ""}</svg>
       <div class="txt">
         <b>${n} of ${goal} today</b>
         <p>${n>=goal ? "Goal hit. Streak is safe." : (goal-n) + " more to keep the streak alive."}</p>
@@ -1957,7 +1968,7 @@ function openStats(){
     <div class="chartwrap">
       <div class="chart" id="chart">
         <div class="gridline" style="bottom:100%"><span>${max}</span></div>
-        <div class="gridline" style="bottom:50%"><span>${Math.round(max/2)}</span></div>
+        ${max >= 2 ? `<div class="gridline" style="bottom:50%"><span>${Math.round(max/2)}</span></div>` : ""}
         ${bars}
         <div class="tip" id="tip"></div>
       </div>
@@ -2084,7 +2095,7 @@ function download(name, text, mime){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function downloadBackup(){
-  download("reach-backup-" + today() + ".json", JSON.stringify(db, null, 2), "application/json");
+  download("dmaura-backup-" + today() + ".json", JSON.stringify(db, null, 2), "application/json");
   toast("Backup downloaded");
 }
 function restoreBackup(){
@@ -2096,12 +2107,12 @@ function restoreBackup(){
     r.onload = () => {
       try{
         const d = JSON.parse(String(r.result||""));
-        if(!d || !Array.isArray(d.leads)) throw new Error("not a Reach backup");
+        if(!d || !Array.isArray(d.leads)) throw new Error("not a DM Aura backup");
         db = Object.assign(blank(), d);
         db.leads = db.leads.map(mkLead);
         save(); closeSheet(); renderAll();
         toast("Restored " + db.leads.length + " leads");
-      }catch(e){ toast("That file isn't a Reach backup"); }
+      }catch(e){ toast("That file isn't a DM Aura backup"); }
     };
     r.readAsText(f);
   });
@@ -2122,7 +2133,7 @@ $("#btnExport").addEventListener("click", () => {
     lines.push([l.handle, l.xid, l.name, l.bio, l.followers, l.following, l.location, l.website,
       l.status, l.tags.join("|"), l.listName, l.dms.length, last, l.note].map(csvCell).join(","));
   });
-  download("reach-" + state.filter + "-" + today() + ".csv", lines.join("\n"), "text/csv;charset=utf-8");
+  download("dmaura-" + state.filter + "-" + today() + ".csv", lines.join("\n"), "text/csv;charset=utf-8");
   toast(rows.length + " rows exported");
 });
 
