@@ -1,15 +1,42 @@
-# Reach — a DM outreach sheet for X
+# DM Aura
 
-The middle ground between an automated DM blaster (bannable, and it shows) and
-copy-pasting out of your Notes app 40 times a day.
+A waitlist site and the tool behind it.
 
-Import a CSV of X profiles. Each one gets a card with a send button. Tap it and
-X opens **with your message already typed** — you read it, you hit send. The app
-logs it, moves you to the next person, and keeps your streak.
+```
+index.html            the early-access page — waitlist capture, posts to Formspree
+fonts/                self-hosted variable faces (Newsreader, Instrument Sans)
+app/                  the tool itself, a standalone static PWA
+  index.html          the entire app — markup, styles, logic
+  sw.js               service worker, cache-first shell (bump CACHE on deploy)
+  manifest.webmanifest, icon.svg, icon-*.png
+  sample-leads.csv    example import, including rows with no numeric id
+```
 
-No servers, no API keys, no automation. Every DM is a real tap by a real person.
+Both halves are static and dependency-free. Drop the folder on any host: `/`
+serves the waitlist, `/app/` serves the tool. Everything under `app/` uses
+relative paths, so it runs from any prefix without configuration.
+
+## The waitlist page
+
+Signups POST to Formspree (`https://formspree.io/f/xnpqanrz`) over `fetch`, so
+the page never navigates away. It handles the states a real form needs: field
+validation before submit, a busy button, server-side errors surfaced in the
+copy Formspree returns, and a success panel that echoes the address it captured.
+A hidden `_gotcha` field catches bots.
+
+The artwork is hand-authored inline SVG — no image requests, sharp at any
+density, and it re-frames itself on mobile by anchoring its bottom edge so the
+horizon and figure stay in shot. Fonts are self-hosted: no render-blocking
+third-party request, and no reader's IP goes to a font CDN just to load a
+signup page.
+
+There is no social-proof row. The slot that would normally hold customer logos
+carries three product claims that are actually true instead. Swap in real logos
+when there are real customers to name.
 
 ---
+
+# The tool
 
 ## The one thing that matters: numeric user IDs
 
@@ -32,20 +59,17 @@ where you stand, and you can paste a missing id into any lead under *Info*.
 
 ## Running it
 
-It is one static HTML file with no build step and no dependencies.
+One static HTML file, no build step, no dependencies.
 
 ```bash
-# locally
-python3 -m http.server 8000    # then open http://localhost:8000
-
-# deploy — drop the folder on any static host
-netlify deploy --prod --dir .
-vercel --prod
-# or push to a gh-pages branch
+python3 -m http.server 8000
+# http://localhost:8000       waitlist page
+# http://localhost:8000/app/  the tool
 ```
 
-On iPhone, open the deployed URL in Safari → Share → **Add to Home Screen**. It
-installs as a standalone app and works offline; DMs still open the X app.
+On iPhone, open the deployed `/app/` URL in Safari → Share → **Add to Home
+Screen**. It installs as a standalone app and works offline; DMs still open the
+X app.
 
 ## Importing
 
@@ -199,13 +223,3 @@ URL and anon key, gate the app behind Google OAuth, key the cache on the user id
 (`KEY_PREFIX + user.id`, already a one-line change in `cacheKey()`), and push
 from `save()` / pull on boot. Keeping `localStorage` as the write-through cache
 is what makes the app still work on a train.
-
-## Layout
-
-```
-index.html            the entire app — markup, styles, logic
-manifest.webmanifest  PWA metadata
-sw.js                 service worker, cache-first shell (bump CACHE on deploy)
-icon.svg icon-*.png   app icons
-sample-leads.csv      example import, including rows with no numeric id
-```
