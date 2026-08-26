@@ -4,7 +4,7 @@ A waitlist site and the tool behind it.
 
 ```
 index.html            the early-access page — waitlist capture, posts to Formspree
-fonts/                self-hosted variable faces (Newsreader, Instrument Sans)
+fonts/                self-hosted variable faces (Bodoni Moda, Newsreader, DM Mono)
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
   sw.js               service worker, cache-first shell (bump CACHE on deploy)
@@ -24,15 +24,25 @@ validation before submit, a busy button, server-side errors surfaced in the
 copy Formspree returns, and a success panel that echoes the address it captured.
 A hidden `_gotcha` field catches bots.
 
-The artwork is hand-authored inline SVG — no image requests, sharp at any
-density, and it re-frames itself on mobile by anchoring its bottom edge so the
-horizon and figure stay in shot. Fonts are self-hosted: no render-blocking
-third-party request, and no reader's IP goes to a font CDN just to load a
-signup page.
+Two plates: vermilion for the pitch and the form, near-black for the product.
+Display type is Bodoni Moda, switching between roman and italic mid-phrase as a
+system rather than as an accent on one word. DM Mono carries the marginalia,
+Newsreader the reading copy. All three are self-hosted — no render-blocking
+third-party request, and no reader's IP goes to a font CDN to load a signup page.
 
-There is no social-proof row. The slot that would normally hold customer logos
-carries three product claims that are actually true instead. Swap in real logos
-when there are real customers to name.
+Every colour pair on the vermilion was checked rather than eyeballed: ink at 72%
+opacity over that orange is only 3.2:1, so body copy, marginalia and labels are
+all solid ink, and reduced opacity is left to the rules.
+
+The black plate is a mockup of the outbox — three sent DMs and the day's tally,
+built from real markup rather than a screenshot, so it stays sharp and re-flows
+on a phone. **The names and handles in it are invented**, and the plate is
+labelled `SAMPLE` and `names are fictional` on its own face. Replace it with
+genuine sends when there are some worth showing.
+
+There is no social-proof row. Inventing customer logos for an unreleased tool
+would be fabricating endorsements, so the slot holds product claims that are
+true instead.
 
 ---
 
