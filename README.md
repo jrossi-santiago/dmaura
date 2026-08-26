@@ -5,10 +5,11 @@ A waitlist site and the tool behind it.
 ```
 index.html            the early-access page — waitlist capture, posts to Formspree
 fonts/                self-hosted variable faces (Bodoni Moda, Newsreader, DM Mono)
+                      — the landing page only; the tool uses system faces
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
   sw.js               service worker, cache-first shell (bump CACHE on deploy)
-  manifest.webmanifest, icon.svg, icon-*.png
+  manifest.webmanifest, icon.svg, icon-*.png   envelope mark on vermilion
   sample-leads.csv    example import, including rows with no numeric id
 ```
 
@@ -47,6 +48,18 @@ true instead.
 ---
 
 # The tool
+
+The tool and the site are one brand: the same envelope mark, the same
+vermilion, bone and ink. Two deliberate differences. The tool's vermilion is
+`#D8460F` rather than the landing's `#F2521C`, because the accent is used as
+*text* there and `#F2521C` is only 3.7:1 on a light surface. And the tool sets
+its figures in the system mono, not DM Mono, whose zero is slashed with no
+plain alternate — fine for a timestamp on a poster, bad in an app whose main
+screen is counts and streaks.
+
+It was called Reach until the rename. A store saved under the old
+`reach.v1.default` key is migrated to `dmaura.v1.default` on first load, so
+nobody loses their leads.
 
 ## The one thing that matters: numeric user IDs
 
