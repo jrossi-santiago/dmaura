@@ -144,7 +144,6 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 }
 .feats .f{display:flex; align-items:baseline; gap:8px; font-family:var(--mono); font-size:.68rem;
   letter-spacing:.08em; text-transform:uppercase; color:var(--ink)}
-.feats .f .n{color:var(--ink-55); font-weight:400}
 .feats .f .dot{width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:1px}
 
 .deck{
@@ -162,7 +161,6 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
   display:flex; align-items:center; gap:9px; margin:clamp(24px,4vh,36px) 0 14px;
   font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-70);
 }
-.eyebrow .n{color:var(--orange); font-weight:500}
 .eyebrow::after{content:""; flex:1; height:1px; background:var(--rule)}
 
 form{margin-top:0}
@@ -386,9 +384,9 @@ h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.
         </div>
 
         <ul class="feats anim" role="list">
-          <li class="f"><span class="n">01</span><span class="dot" style="background:var(--cobalt)"></span>No bots</li>
-          <li class="f"><span class="n">02</span><span class="dot" style="background:var(--orange)"></span>No API keys</li>
-          <li class="f"><span class="n">03</span><span class="dot" style="background:var(--green)"></span>You hit send</li>
+          <li class="f"><span class="dot" style="background:var(--cobalt)"></span>No bots</li>
+          <li class="f"><span class="dot" style="background:var(--orange)"></span>No API keys</li>
+          <li class="f"><span class="dot" style="background:var(--green)"></span>You hit send</li>
         </ul>
 
         <p class="deck anim">
@@ -399,7 +397,7 @@ h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.
         </p>
       </div>
 
-      <p class="eyebrow anim"><span class="n">04</span> Request access</p>
+      <p class="eyebrow anim">Request access</p>
 
       <form id="form" novalidate>
         <div class="fld f1 anim">
