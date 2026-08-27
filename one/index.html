@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>DM Aura — Field Study</title>
+<meta name="description" content="Import your list, tap once, and X opens with the message already written. No bots, no API keys. Join the early access list." />
+<meta name="theme-color" content="#F1ECE0" />
+<link rel="icon" href="../app/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="../app/icon-180.png" />
+<meta property="og:title" content="DM Aura — Field Study" />
+<meta property="og:description" content="Import your list, tap once, and X opens with the message already written. No bots, no API keys." />
+<meta property="og:type" content="website" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   DM AURA — Field Study
+   Editorial research-studio direction: cream paper ground, a bold
+   grotesk headline broken by one italic serif word, a flowing
+   gradient ribbon behind the hero, halftone dot clusters as texture,
+   and a numbered marginalia system (No. 001 / 01–03 / Fig. 01) that
+   runs the length of the page like a lab notebook.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root{
+  --cream:#F1ECE0;
+  --cream-hi:#F8F4EA;
+  --ink:#15130F;
+  --ink-70:rgba(21,19,15,.7);
+  --ink-55:rgba(21,19,15,.55);
+  --rule:rgba(21,19,15,.16);
+  --rule-2:rgba(21,19,15,.28);
+
+  --cobalt:#2C4CDB;
+  --cobalt-tint:rgba(44,76,219,.12);
+  --orange:#E8531F;
+  --orange-tint:rgba(232,83,31,.12);
+  --green:#2E9E76;
+  --green-tint:rgba(46,158,118,.14);
+  --pink:#D9538F;
+
+  --navy:#14161D;
+  --navy-2:#1B1E29;
+  --navy-3:#20232F;
+  --cream-t:#EDE7D8;
+  --cream-t-65:rgba(237,231,216,.65);
+  --cream-t-40:rgba(237,231,216,.4);
+  --cream-t-14:rgba(237,231,216,.14);
+
+  --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+
+  --pad:clamp(20px,3.6vw,46px);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --r:clamp(6px,.9vw,14px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ink); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.5;
+}
+::selection{background:var(--cobalt); color:var(--cream)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cobalt); outline-offset:3px; border-radius:2px}
+a{color:inherit}
+
+.mono{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; font-weight:400;
+}
+
+/* ── shell ──────────────────────────────────────────────────────── */
+.frame{min-height:100dvh; padding:clamp(8px,1.1vw,16px); display:flex}
+.spread{
+  flex:1; display:grid; grid-template-columns:minmax(0,1fr);
+  gap:clamp(8px,1.1vw,16px); align-content:stretch;
+}
+@media (min-width:960px){ .spread{grid-template-columns:minmax(500px,1.06fr) 1fr} }
+
+/* ── leaf: cream panel ─────────────────────────────────────────── */
+.leaf{
+  background:var(--cream); border-radius:var(--r); padding:var(--pad);
+  display:flex; flex-direction:column; min-width:0; position:relative; overflow:hidden;
+}
+/* halftone dot cluster, top-right corner */
+.leaf .texture{
+  position:absolute; top:clamp(10px,2vw,26px); right:clamp(10px,2vw,26px);
+  width:96px; height:64px; pointer-events:none; z-index:0; opacity:.55;
+  background-image:
+    radial-gradient(circle, var(--cobalt) 1.6px, transparent 1.7px),
+    radial-gradient(circle, var(--orange) 1.6px, transparent 1.7px),
+    radial-gradient(circle, var(--green) 1.6px, transparent 1.7px);
+  background-size:16px 16px, 16px 16px, 16px 16px;
+  background-position:0 0, 5.5px 8px, 11px 2.5px;
+  -webkit-mask-image:radial-gradient(ellipse at 70% 30%, #000 40%, transparent 78%);
+  mask-image:radial-gradient(ellipse at 70% 30%, #000 40%, transparent 78%);
+}
+@media (max-width:700px){ .leaf .texture{display:none} }
+.leaf > *{position:relative; z-index:1}
+
+/* ── top rail ───────────────────────────────────────────────────── */
+.rail{display:flex; align-items:center; gap:14px; padding-bottom:clamp(20px,4.4vh,44px)}
+.rail .wm{display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit}
+.rail .wm svg{width:20px; height:20px; overflow:visible}
+.rail .wm .mk{stroke:var(--ink); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.rail .wm b{font-family:var(--sans); font-weight:700; font-size:.95rem; letter-spacing:-.01em}
+.rail .wm em{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--cobalt)}
+.rail .sp{flex:1}
+.rail .edn{color:var(--ink-55); border-right:1px solid var(--rule-2); padding-right:14px; margin-right:2px}
+@media (max-width:700px){ .rail .edn{display:none} }
+.rail .tag{
+  display:flex; align-items:center; gap:7px; color:var(--ink);
+}
+.rail .tag .dot{width:6px; height:6px; border-radius:50%; background:var(--green); flex:none;
+  box-shadow:0 0 0 3px var(--green-tint)}
+
+/* ── headline zone ──────────────────────────────────────────────── */
+.body{flex:1; display:flex; flex-direction:column; justify-content:center; min-width:0}
+.hero{position:relative}
+.ribbon{position:absolute; left:-14px; right:-8px; top:-6%; height:118%; z-index:0; pointer-events:none; overflow:visible}
+.ribbon path{fill:none; stroke-width:5; stroke-linecap:round; stroke:url(#ribbon-grad);
+  stroke-dasharray:1; stroke-dashoffset:1; animation:draw 1.6s var(--ease) .3s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+h1{
+  position:relative; z-index:1;
+  font-family:var(--sans); font-weight:700;
+  font-size:clamp(2.6rem, 6.2vw, 4.65rem); line-height:.98;
+  letter-spacing:-.022em; margin:0; color:var(--ink);
+}
+h1 span{display:block}
+h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--cobalt); letter-spacing:0}
+
+.feats{
+  position:relative; z-index:1; margin:clamp(20px,3.4vh,30px) 0 0; padding:11px 0;
+  border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);
+  display:flex; gap:20px; flex-wrap:wrap; row-gap:8px;
+}
+.feats .f{display:flex; align-items:baseline; gap:8px; font-family:var(--mono); font-size:.68rem;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink)}
+.feats .f .n{color:var(--ink-55); font-weight:400}
+.feats .f .dot{width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:1px}
+
+.deck{
+  margin:clamp(16px,2.6vh,22px) 0 0; max-width:34rem;
+  font-size:1.02rem; line-height:1.64; color:var(--ink);
+}
+.deck mark{
+  background:var(--cobalt-tint); color:var(--ink); font-family:var(--serif);
+  font-style:italic; font-size:1.12em; padding:0 .32em .05em; border-radius:2px;
+  box-shadow:inset 0 -1.5px 0 var(--cobalt); white-space:nowrap;
+}
+
+/* ── form ───────────────────────────────────────────────────────── */
+.eyebrow{
+  display:flex; align-items:center; gap:9px; margin:clamp(24px,4vh,36px) 0 14px;
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-70);
+}
+.eyebrow .n{color:var(--orange); font-weight:500}
+.eyebrow::after{content:""; flex:1; height:1px; background:var(--rule)}
+
+form{margin-top:0}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:0 20px}
+@media (max-width:430px){ .pair{grid-template-columns:1fr} }
+
+.fld{position:relative; padding-top:19px; margin-bottom:4px}
+.fld input{
+  width:100%; border:0; background:transparent; border-radius:0;
+  padding:5px 0 10px; font-family:var(--sans); font-size:.9375rem; font-weight:500;
+  border-bottom:1.5px solid var(--rule-2); transition:border-color .22s var(--ease);
+}
+.fld input:hover{border-bottom-color:var(--ink-55)}
+.fld input:focus{outline:none; border-bottom-color:var(--cobalt)}
+.fld label{
+  position:absolute; left:0; top:19px; padding-top:5px;
+  font-family:var(--mono); font-size:.875rem; color:var(--ink-55);
+  pointer-events:none; transform-origin:0 0;
+  transition:transform .24s var(--ease), color .2s var(--ease), letter-spacing .24s var(--ease);
+}
+.fld input:focus + label,
+.fld input:not(:placeholder-shown) + label{
+  transform:translateY(-20px) scale(.7); letter-spacing:.14em; text-transform:uppercase; color:var(--cobalt);
+}
+.fld .note{
+  display:block; font-family:var(--mono); font-size:.64rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--orange); margin-top:6px;
+  opacity:0; transform:translateY(-3px); transition:.2s var(--ease);
+}
+.fld[data-bad] input{border-bottom-color:var(--orange); border-bottom-width:2px}
+.fld[data-bad] .note{opacity:1; transform:none}
+
+.consent{display:flex; gap:10px; align-items:flex-start; margin:20px 0 0; cursor:pointer}
+.consent input{position:absolute; opacity:0; width:0; height:0}
+.consent .box{
+  flex:none; width:16px; height:16px; margin-top:2px; border:1.5px solid var(--ink-70);
+  display:grid; place-items:center; transition:.18s var(--ease); background:transparent; border-radius:3px;
+}
+.consent .box svg{width:10px; height:10px; stroke:var(--cream); fill:none; stroke-width:2.6;
+  stroke-linecap:round; stroke-linejoin:round; opacity:0; transform:scale(.5); transition:.18s var(--ease)}
+.consent input:checked + .box{background:var(--cobalt); border-color:var(--cobalt)}
+.consent input:checked + .box svg{opacity:1; transform:none}
+.consent input:focus-visible + .box{outline:2px solid var(--cobalt); outline-offset:2px}
+.consent .t{font-size:.87rem; line-height:1.55; color:var(--ink-70)}
+.consent .t a{color:var(--ink); text-underline-offset:2.5px; text-decoration-thickness:1px}
+
+.go{
+  margin-top:24px; width:100%; height:56px; border:0; cursor:pointer;
+  background:var(--ink); color:var(--cream); position:relative; overflow:hidden;
+  display:grid; place-items:center; border-radius:3px;
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase;
+  transition:background .2s var(--ease), color .2s var(--ease);
+}
+.go:hover:not(:disabled){background:var(--cobalt); color:var(--cream)}
+.go:active:not(:disabled){transform:translateY(1px)}
+.go:disabled{cursor:default; opacity:.6}
+.go .lbl{display:flex; align-items:center; gap:12px; transition:.26s var(--ease)}
+.go .lbl svg{width:16px; height:9px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:transform .26s var(--ease)}
+.go:hover:not(:disabled) .lbl svg{transform:translateX(5px)}
+.go[data-busy] .lbl{opacity:0; transform:translateY(-100%)}
+.go .spin{position:absolute; width:14px; height:14px; border:1.5px solid rgba(241,236,224,.3);
+  border-top-color:var(--cream); border-radius:50%; opacity:0; transition:opacity .2s}
+.go[data-busy] .spin{opacity:1; animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.formerr{margin:13px 0 0; font-family:var(--mono); font-size:.7rem; letter-spacing:.04em;
+  line-height:1.6; color:var(--orange); padding-left:12px; border-left:2px solid var(--orange); text-transform:uppercase}
+.formerr:empty{display:none}
+
+/* ── colophon ───────────────────────────────────────────────────── */
+.colophon{display:flex; gap:16px; align-items:baseline; padding-top:clamp(22px,4vh,38px); color:var(--ink-55); flex-wrap:wrap}
+.colophon .sp{flex:1; min-width:0}
+.colophon i{font-family:var(--serif); font-style:italic; color:var(--ink); text-transform:none; letter-spacing:0; font-size:1.05em}
+
+/* ── success ────────────────────────────────────────────────────── */
+.done{display:none}
+.done h2{font-family:var(--sans); font-weight:700; font-size:clamp(2.3rem,4.8vw,3.4rem);
+  line-height:1; letter-spacing:-.02em; margin:0 0 1.1rem; color:var(--ink)}
+.done h2 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--cobalt)}
+.done p{margin:0 0 .9rem; color:var(--ink-70); max-width:31rem; line-height:1.62}
+.done .stamp{display:inline-flex; align-items:center; gap:8px; margin-top:16px; padding:8px 14px;
+  border:1px solid var(--ink-70); color:var(--ink); border-radius:3px}
+.done .stamp .dot{width:6px; height:6px; border-radius:50%; background:var(--green)}
+body[data-sent] .pitch, body[data-sent] form, body[data-sent] .eyebrow{display:none}
+body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
+
+/* ── the plate: sent messages, navy ────────────────────────────── */
+.plate{
+  background:var(--navy); border-radius:var(--r); padding:var(--pad);
+  display:flex; flex-direction:column; position:relative; overflow:hidden; min-width:0;
+  color:var(--cream-t);
+}
+.plate .texture{
+  position:absolute; bottom:clamp(6px,1.6vw,18px); left:clamp(6px,1.6vw,18px);
+  width:110px; height:78px; pointer-events:none; z-index:0; opacity:.5;
+  background-image:
+    radial-gradient(circle, var(--pink) 1.5px, transparent 1.6px),
+    radial-gradient(circle, var(--cobalt) 1.5px, transparent 1.6px),
+    radial-gradient(circle, var(--orange) 1.5px, transparent 1.6px);
+  background-size:15px 15px, 15px 15px, 15px 15px;
+  background-position:0 0, 5px 7px, 10px 2px;
+  -webkit-mask-image:radial-gradient(ellipse at 30% 70%, #000 35%, transparent 76%);
+  mask-image:radial-gradient(ellipse at 30% 70%, #000 35%, transparent 76%);
+}
+.plate > *{position:relative; z-index:1}
+.plate .pr{display:flex; align-items:baseline; gap:12px; color:var(--cream-t-65)}
+.plate .pr i{font-family:var(--serif); font-style:italic; color:var(--cream-t); text-transform:none; letter-spacing:0; font-size:1.05em}
+.plate .pr .sp{flex:1}
+.stage{
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+  gap:clamp(10px,1.5vh,15px); padding:clamp(20px,3.6vh,40px) 0; min-width:0;
+}
+
+.dm{
+  background:var(--navy-2); border:1px solid var(--cream-t-14); border-radius:9px;
+  padding:0 15px 12px; transform:rotate(var(--rot,0deg));
+  box-shadow:0 12px 30px rgba(0,0,0,.5); max-width:min(430px,100%);
+  border-top:none; overflow:hidden;
+}
+.dm .bar{height:4px; margin:0 -15px 13px; background:var(--accent,var(--cobalt))}
+.dm:nth-child(1){align-self:flex-start}
+.dm:nth-child(2){align-self:flex-end; margin-right:clamp(0px,1vw,10px)}
+.dm:nth-child(3){align-self:flex-start; margin-left:clamp(0px,2vw,24px)}
+.dm .who{display:flex; align-items:center; gap:9px; margin-bottom:9px}
+.dm .av{
+  width:28px; height:28px; border-radius:50%; flex:none; display:grid; place-items:center;
+  font-family:var(--mono); font-size:.58rem; letter-spacing:.02em; font-weight:500;
+  background:var(--accent,var(--cobalt)); color:var(--avtext,#fff);
+}
+.dm .nm{flex:1; min-width:0}
+.dm .nm b{display:block; font-family:var(--sans); font-size:.87rem; font-weight:600; color:var(--cream-t);
+  line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.dm .nm span{display:block; font-family:var(--mono); font-size:.6rem; letter-spacing:.04em; color:var(--cream-t-65)}
+.dm .tag{
+  flex:none; font-family:var(--mono); font-size:.54rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--cream-t); border:1px solid var(--accent,var(--cobalt)); padding:2px 7px 2px 6px; border-radius:2px;
+  display:flex; align-items:center; gap:5px;
+}
+.dm .tag::before{content:""; width:5px; height:5px; border-radius:50%; background:var(--accent,var(--cobalt))}
+.dm .tag.man{border-color:var(--cream-t-40)}
+.dm .tag.man::before{background:var(--cream-t-65)}
+.dm p{margin:0; font-family:var(--sans); font-size:.885rem; line-height:1.55; color:rgba(237,231,216,.92)}
+.dm .ft{display:flex; align-items:center; gap:8px; margin-top:11px; padding-top:9px;
+  border-top:1px solid var(--cream-t-14); font-family:var(--mono); font-size:.58rem;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--cream-t-65)}
+.dm .ft .sp{flex:1}
+.dm .ft .ok{color:var(--accent,var(--cobalt)); display:flex; align-items:center; gap:5px}
+.dm .ft .ok svg{width:9px; height:9px; stroke:currentColor; fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round}
+
+.tally{
+  display:flex; align-items:stretch; gap:0; border:1px solid var(--cream-t-14);
+  border-radius:6px; overflow:hidden; margin-top:clamp(8px,1.4vh,14px);
+}
+.tally div{flex:1; padding:11px 13px; border-right:1px solid var(--cream-t-14); min-width:0}
+.tally div:last-child{border-right:0}
+.tally b{display:block; font-family:var(--sans); font-size:1.55rem; font-weight:700;
+  line-height:1; letter-spacing:-.01em; color:var(--orange);
+  font-variant-numeric:lining-nums tabular-nums; font-feature-settings:"lnum" 1,"tnum" 1}
+.tally span{display:block; font-family:var(--mono); font-size:.56rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--cream-t-65); margin-top:6px}
+.plate .foot{display:flex; gap:14px; align-items:baseline; color:var(--cream-t-65); flex-wrap:wrap}
+.plate .foot .sp{flex:1; min-width:0}
+.plate .foot i{font-family:var(--serif); font-style:italic; color:var(--cream-t); text-transform:none; letter-spacing:0; font-size:1.05em}
+
+/* ── direction switcher ────────────────────────────────────────── */
+.switcher{
+  position:fixed; right:clamp(8px,2vw,18px); bottom:clamp(8px,2vw,18px); z-index:60;
+  display:flex; align-items:center; gap:7px; padding:7px 12px;
+  background:rgba(248,244,234,.86); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  border:1px solid var(--rule-2); border-radius:100px;
+  box-shadow:0 6px 20px rgba(21,19,15,.16);
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-70);
+}
+.switcher a{text-decoration:none; color:var(--ink-70); transition:color .15s var(--ease)}
+.switcher a:hover{color:var(--cobalt)}
+.switcher .nums{display:flex; gap:5px}
+.switcher .nums a{width:16px; height:16px; display:grid; place-items:center; border-radius:50%; color:var(--ink-55)}
+.switcher .nums a[aria-current="page"]{background:var(--ink); color:var(--cream); font-weight:500}
+.switcher .sep{color:var(--rule-2)}
+.switcher .full{display:flex; align-items:center; gap:7px}
+@media (max-width:520px){
+  .switcher{padding:5px 5px 5px 10px; gap:5px}
+  .switcher .full{display:none}
+  .switcher .nums a{width:15px; height:15px}
+}
+
+@keyframes rise{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
+.anim{opacity:0; animation:rise .7s var(--ease) both}
+.dm{animation:rise .7s var(--ease) both}
+.rail{animation-delay:.04s}
+h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.17s}
+.feats{animation-delay:.24s} .deck{animation-delay:.3s} .eyebrow{animation-delay:.35s}
+.f1{animation-delay:.4s} .f2{animation-delay:.45s} .f3{animation-delay:.5s}
+.consent{animation-delay:.55s} .go{animation-delay:.6s} .colophon{animation-delay:.66s}
+.plate .pr{animation-delay:.12s}
+.dm:nth-child(1){animation-delay:.3s} .dm:nth-child(2){animation-delay:.4s} .dm:nth-child(3){animation-delay:.5s}
+.tally{animation-delay:.6s} .plate .foot{animation-delay:.7s}
+
+@media (prefers-reduced-motion:reduce){
+  .anim,.dm,.done{animation:none !important; opacity:1 !important; transform:rotate(var(--rot,0deg)) !important}
+  .go .spin{animation:none}
+  .ribbon path{animation:none !important; stroke-dashoffset:0 !important}
+  *{transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div class="frame">
+<main class="spread">
+
+  <!-- ════════ the leaf: cream, pitch + form ════════ -->
+  <section class="leaf">
+    <div class="texture" aria-hidden="true"></div>
+
+    <div class="rail anim">
+      <a class="wm" href="../">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path class="mk" d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/>
+          <path class="mk" d="M21.3 2.9 10.9 13.6"/>
+        </svg>
+        <b>DM <em>Aura</em></b>
+      </a>
+      <span class="sp"></span>
+      <span class="mono edn">No. 001</span>
+      <span class="mono tag"><span class="dot" aria-hidden="true"></span>Early access — closed beta</span>
+    </div>
+
+    <div class="body">
+
+      <div class="pitch">
+        <div class="hero">
+          <svg class="ribbon" viewBox="0 0 640 160" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="ribbon-grad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#2C4CDB"/>
+                <stop offset="34%" stop-color="#2E9E76"/>
+                <stop offset="68%" stop-color="#E8531F"/>
+                <stop offset="100%" stop-color="#D9538F"/>
+              </linearGradient>
+            </defs>
+            <path pathLength="1" d="M4 108 C 60 46 96 150 150 96 C 204 42 240 146 296 92 C 352 38 388 142 444 90 C 494 44 522 118 576 78 C 600 60 616 96 636 66"/>
+          </svg>
+          <h1>
+            <span class="anim">The DMs</span>
+            <span class="anim">come from <i>you</i></span>
+          </h1>
+        </div>
+
+        <ul class="feats anim" role="list">
+          <li class="f"><span class="n">01</span><span class="dot" style="background:var(--cobalt)"></span>No bots</li>
+          <li class="f"><span class="n">02</span><span class="dot" style="background:var(--orange)"></span>No API keys</li>
+          <li class="f"><span class="n">03</span><span class="dot" style="background:var(--green)"></span>You hit send</li>
+        </ul>
+
+        <p class="deck anim">
+          Import your list, tap once, and X opens with the message
+          <mark>already written</mark> — you read it, you send it. Every DM leaves as
+          a real tap, so there is <mark>nothing to limit</mark> and nothing to explain.
+          Early access opens in batches.
+        </p>
+      </div>
+
+      <p class="eyebrow anim"><span class="n">04</span> Request access</p>
+
+      <form id="form" novalidate>
+        <div class="fld f1 anim">
+          <input id="email" name="email" type="email" placeholder=" " autocomplete="email"
+            inputmode="email" autocapitalize="none" spellcheck="false" required />
+          <label for="email">Work email</label>
+          <span class="note" id="email-note"></span>
+        </div>
+
+        <div class="pair">
+          <div class="fld f2 anim">
+            <input id="first" name="firstName" type="text" placeholder=" " autocomplete="given-name" />
+            <label for="first">First name</label>
+          </div>
+          <div class="fld f2 anim">
+            <input id="last" name="lastName" type="text" placeholder=" " autocomplete="family-name" />
+            <label for="last">Last name</label>
+          </div>
+        </div>
+
+        <div class="fld f3 anim">
+          <input id="company" name="company" type="text" placeholder=" " autocomplete="organization" />
+          <label for="company">Company</label>
+        </div>
+
+        <label class="consent anim">
+          <input type="checkbox" id="consent" name="consent" />
+          <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+          <span class="t">Send me build updates and my early-access invite.
+            <a href="#privacy">Privacy</a> &amp; <a href="#terms">Terms</a>.</span>
+        </label>
+
+        <!-- Formspree's spam trap: real people never fill this in. -->
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true"
+          style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+
+        <button class="go anim" type="submit" id="go">
+          <span class="lbl">Request early access
+            <svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg>
+          </span>
+          <span class="spin" aria-hidden="true"></span>
+        </button>
+
+        <p class="formerr mono" id="formerr" role="alert"></p>
+      </form>
+
+      <div class="done" id="done" role="status" aria-live="polite" tabindex="-1">
+        <h2><i>You're</i> on the list</h2>
+        <p id="doneline">Check your inbox — a confirmation is on its way.</p>
+        <p>Invites go out in small batches so we can actually read the replies.
+          Answer that first email with what you're sending and who you're sending it
+          to; it decides what gets built next.</p>
+        <p class="stamp mono"><span class="dot" aria-hidden="true"></span>Nothing else to do for now</p>
+      </div>
+
+    </div>
+
+    <div class="colophon mono anim">
+      <span>Built by <i>DM Aura</i></span>
+      <span class="sp"></span>
+      <span>Status: <i>waitlist open</i></span>
+    </div>
+  </section>
+
+  <!-- ════════ the plate: navy, outbox mockup ════════ -->
+  <aside class="plate">
+    <div class="texture" aria-hidden="true"></div>
+
+    <div class="pr mono anim">
+      <span>Fig. 01 — <i>selected sends</i></span>
+      <span class="sp"></span>
+      <span aria-hidden="true">Sample</span>
+    </div>
+
+    <div class="stage">
+
+      <article class="dm" style="--rot:-1.6deg; --accent:var(--cobalt)">
+        <div class="bar"></div>
+        <div class="who">
+          <span class="av" style="--avtext:#fff">MR</span>
+          <span class="nm"><b>Maya Reyes</b><span>@mayaships</span></span>
+          <span class="tag">Prefilled</span>
+        </div>
+        <p>Maya — your thread on running design systems solo is the clearest thing
+          I've read on it. I'm Alex, I help small teams turn an audience into pipeline.
+          Worth a look?</p>
+        <div class="ft">
+          <span>09:41</span><span class="sp"></span>
+          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Sent</span>
+        </div>
+      </article>
+
+      <article class="dm" style="--rot:1.3deg; --accent:var(--orange)">
+        <div class="bar"></div>
+        <div class="who">
+          <span class="av" style="--avtext:#15130F">DO</span>
+          <span class="nm"><b>Devon Okoye</b><span>@devonbuilds</span></span>
+          <span class="tag">Prefilled</span>
+        </div>
+        <p>Hey Devon — caught your post on cold outbound being a numbers game and
+          hating it. Same. Built something for that. Want the short version?</p>
+        <div class="ft">
+          <span>09:44</span><span class="sp"></span>
+          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Replied</span>
+        </div>
+      </article>
+
+      <article class="dm" style="--rot:-.7deg; --accent:var(--green)">
+        <div class="bar"></div>
+        <div class="who">
+          <span class="av" style="--avtext:#15130F">PN</span>
+          <span class="nm"><b>Priya Nair</b><span>@priyanair</span></span>
+          <span class="tag man">Copied</span>
+        </div>
+        <p>Priya — no numeric ID on your row, so this one got copied to the clipboard
+          and pasted by hand. Took nine seconds instead of one.</p>
+        <div class="ft">
+          <span>09:46</span><span class="sp"></span>
+          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Sent</span>
+        </div>
+      </article>
+
+      <div class="tally anim">
+        <div><b>37</b><span>Sent today</span></div>
+        <div><b>12</b><span>Day streak</span></div>
+        <div><b>6</b><span>Replies</span></div>
+      </div>
+    </div>
+
+    <div class="foot mono anim">
+      <span>Mockup — <i>names are fictional</i></span>
+      <span class="sp"></span>
+      <span>DM&nbsp;<i>Aura</i></span>
+    </div>
+  </aside>
+
+</main>
+</div>
+
+<nav class="switcher" aria-label="Design direction switcher">
+  <span class="full">
+    <a href="../">Site</a>
+    <span class="sep">·</span>
+    <span>Field Study</span>
+    <span class="sep">·</span>
+  </span>
+  <span class="nums">
+    <a href="../one/" aria-current="page">1</a><a href="../two/">2</a><a href="../three/">3</a><a href="../four/">4</a>
+  </span>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+  var form = document.getElementById("form");
+  var go   = document.getElementById("go");
+  var err  = document.getElementById("formerr");
+  var email = document.getElementById("email");
+  var emailFld = email.closest(".fld");
+  var note = document.getElementById("email-note");
+
+  var ENDPOINT = "https://formspree.io/f/xnpqanrz";
+
+  // Deliberately permissive: the server is the real judge of an address,
+  // and a regex that rejects a valid one costs a signup.
+  function looksLikeEmail(v){
+    return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(String(v||"").trim());
+  }
+  function flag(msg){
+    if(msg){ emailFld.setAttribute("data-bad",""); note.textContent = msg; }
+    else   { emailFld.removeAttribute("data-bad");  note.textContent = ""; }
+  }
+  email.addEventListener("input", function(){ if(emailFld.hasAttribute("data-bad")) flag(""); });
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    err.textContent = "";
+
+    if(!looksLikeEmail(email.value)){
+      flag("That address doesn't look complete");
+      email.focus();
+      return;
+    }
+    flag("");
+
+    var data = new FormData(form);
+    data.set("consent", document.getElementById("consent").checked ? "yes" : "no");
+    data.set("_subject", "DM Aura early access — " + email.value.trim());
+
+    go.setAttribute("data-busy","");
+    go.disabled = true;
+
+    fetch(ENDPOINT, { method:"POST", body:data, headers:{ Accept:"application/json" } })
+      .then(function(res){
+        return res.json().catch(function(){ return {}; }).then(function(body){
+          if(res.ok) return body;
+          // Formspree hands back field-level reasons; show the first one.
+          var why = body && body.errors && body.errors.length
+            ? body.errors.map(function(x){ return x.message; }).join(" ")
+            : "Something went wrong on our end. Try again in a moment.";
+          throw new Error(why);
+        });
+      })
+      .then(function(){
+        document.getElementById("doneline").textContent =
+          "We'll write to " + email.value.trim() + " when your invite is ready.";
+        document.body.setAttribute("data-sent","");
+        document.getElementById("done").focus();
+      })
+      .catch(function(e2){
+        go.removeAttribute("data-busy");
+        go.disabled = false;
+        err.textContent = e2 && e2.message
+          ? e2.message
+          : "Couldn't reach the server. Check your connection and try again.";
+      });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>DM Aura — Night Bloom</title>
+<meta name="description" content="Import your list, tap once, and X opens with the message already written. No bots, no API keys. Join the early access list." />
+<meta name="theme-color" content="#0F1016" />
+<link rel="icon" href="../app/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="../app/icon-180.png" />
+<meta property="og:title" content="DM Aura — early access" />
+<meta property="og:description" content="Import your list, tap once, and X opens with the message already written. No bots, no API keys." />
+<meta property="og:type" content="website" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   DM AURA — Night Bloom
+   A near-black illustrated ground (loose, linocut-feeling flower and
+   candy-swirl forms in burnt orange and lavender) with a warm cream
+   card floating on top of it. Newsreader italic carries the headline,
+   Hanken Grotesk carries reading copy, JetBrains Mono carries the
+   marginalia. Contrast is checked, not eyeballed — see the comments
+   beside each translucent colour below.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root{
+  --ground:#0F1016;       /* near-black navy */
+  --ground-2:#15161F;     /* the outbox panel, one step up from ground */
+  --orange:#E2703A;
+  --orange-deep:#C85A28;
+  --purple:#9C86D8;
+  --purple-deep:#7E68C4;
+  --cream:#F4ECDD;        /* the floating card surface */
+  --cream-2:#EEE1CB;      /* alternate paper tone for one bubble */
+  --ink:#1B1710;          /* text on the cream card — 15.7:1 on --cream */
+  --ink-2:rgba(27,23,16,.72);   /* still ~11:1 on --cream */
+  --ink-3:rgba(27,23,16,.52);   /* labels/rules only, never body copy */
+  --rule:rgba(27,23,16,.16);
+  --on-dark:#F4ECDD;            /* text set directly on --ground — 16.2:1 */
+  --on-dark-2:rgba(244,236,221,.7);  /* ~10.8:1 on --ground */
+  --on-dark-3:rgba(244,236,221,.48); /* ~6.9:1 on --ground, marginalia only */
+  --line-dark:rgba(244,236,221,.14);
+
+  --display:"Newsreader","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  --pad:clamp(22px,3.6vw,50px);
+  --gut:clamp(14px,2.6vw,32px);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --r:clamp(16px,1.8vw,28px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ground); color:var(--on-dark);
+  font-family:var(--sans); font-size:16px; line-height:1.5;
+}
+::selection{background:var(--purple); color:var(--ink)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--purple); outline-offset:3px; border-radius:2px}
+a{color:inherit}
+
+/* ── marginalia ─────────────────────────────────────────────────── */
+.mono{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.13em;
+  text-transform:uppercase; font-weight:500;
+}
+.mono i{font-family:var(--display); font-style:italic; text-transform:none; letter-spacing:.01em; font-size:1.22em; font-weight:500}
+
+/* ── illustrated ground ────────────────────────────────────────── */
+.bg{position:fixed; inset:0; z-index:0; overflow:hidden; background:var(--ground); pointer-events:none}
+.bg .blob{position:absolute; opacity:.92; filter:saturate(1.02)}
+.bg .b1{width:min(58vw,640px); top:-14%; left:-12%; animation:driftA 34s ease-in-out infinite alternate}
+.bg .b2{width:min(50vw,540px); bottom:-16%; right:-10%; animation:driftB 40s ease-in-out infinite alternate}
+.bg .b3{width:min(22vw,260px); top:6%; right:9%; opacity:.65; animation:driftC 26s ease-in-out infinite alternate}
+.bg .b4{width:min(20vw,230px); bottom:12%; left:3%; opacity:.55; animation:driftA 30s ease-in-out infinite alternate-reverse}
+.bg .grain{position:absolute; inset:-10%; opacity:.16; mix-blend-mode:overlay; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+@keyframes driftA{from{transform:translate(0,0) rotate(0deg)} to{transform:translate(14px,10px) rotate(2.4deg)}}
+@keyframes driftB{from{transform:translate(0,0) rotate(0deg)} to{transform:translate(-12px,-14px) rotate(-1.8deg)}}
+@keyframes driftC{from{transform:translate(0,0) rotate(0deg)} to{transform:translate(-8px,9px) rotate(3deg)}}
+
+/* ── shell ──────────────────────────────────────────────────────── */
+.frame{position:relative; z-index:1; min-height:100dvh; padding:var(--gut); display:flex}
+.spread{
+  flex:1; display:grid; grid-template-columns:minmax(0,1fr);
+  gap:var(--gut); align-content:stretch;
+}
+@media (min-width:960px){ .spread{grid-template-columns:minmax(500px,1.04fr) 1fr} }
+
+/* ── the cream card: floats on the illustrated ground ─────────────── */
+.leaf{
+  background:var(--cream); border-radius:var(--r); padding:var(--pad);
+  display:flex; flex-direction:column; min-width:0; position:relative; overflow:hidden;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.55), 0 3px 0 rgba(27,23,16,.04);
+}
+.leaf::after{ /* paper grain, so the flat cream isn't a screen fill */
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.1; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='130' height='130' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");
+}
+.leaf > *{position:relative; z-index:1}
+
+/* ── logo mark ──────────────────────────────────────────────────── */
+.mark{
+  width:26px; height:26px; border-radius:50%; flex:none;
+  background:conic-gradient(from 210deg, var(--orange), var(--purple) 45%, var(--cream) 68%, var(--orange) 100%);
+  box-shadow:inset 0 0 0 1px rgba(27,23,16,.22), 0 1px 4px rgba(0,0,0,.3);
+}
+
+/* ── top rail ───────────────────────────────────────────────────── */
+.rail{display:flex; align-items:center; gap:12px; padding-bottom:clamp(22px,5vh,50px)}
+.rail .wm{display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit}
+.rail .sp{flex:1}
+.rail .glyphs{display:flex; gap:12px; opacity:.68}
+.rail .glyphs svg{width:15px; height:15px; stroke:var(--ink); fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round}
+@media (max-width:700px){ .rail .glyphs{display:none} }
+.rail .mono{color:var(--ink)}
+
+/* ── headline ───────────────────────────────────────────────────── */
+.body{flex:1; display:flex; flex-direction:column; justify-content:center; min-width:0}
+h1{
+  font-family:var(--display); font-style:italic; font-weight:500;
+  font-size:clamp(2.8rem, 6.4vw, 5rem); line-height:.98;
+  letter-spacing:-.01em; margin:0; color:var(--ink);
+}
+h1 span{display:block}
+h1 .rm{font-style:normal; font-weight:600; letter-spacing:-.015em}
+h1 .tight{letter-spacing:-.008em}
+
+.kicker{
+  margin:clamp(18px,3vh,26px) 0 0; padding:9px 0;
+  border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);
+  color:var(--ink); display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;
+}
+.kicker b{font-weight:500}
+
+.deck{
+  margin:clamp(16px,2.6vh,22px) 0 0; max-width:33rem;
+  font-size:1rem; line-height:1.65; color:var(--ink-2);
+}
+.deck mark{
+  background:var(--purple); color:var(--ink); font-family:var(--display);
+  font-style:italic; font-weight:500; font-size:1.08em; padding:0 .32em .07em; border-radius:3px;
+  white-space:nowrap;
+}
+
+/* ── form ───────────────────────────────────────────────────────── */
+form{margin-top:clamp(22px,3.6vh,34px)}
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:0 20px}
+@media (max-width:430px){ .pair{grid-template-columns:1fr} }
+
+.fld{position:relative; padding-top:19px; margin-bottom:4px}
+.fld input{
+  width:100%; border:0; background:transparent; border-radius:0;
+  padding:5px 0 10px; font-family:var(--mono); font-size:.9375rem; color:var(--ink);
+  border-bottom:1px solid var(--rule); transition:border-color .22s var(--ease);
+}
+.fld input:hover{border-bottom-color:var(--ink-3)}
+.fld input:focus{outline:none; border-bottom-color:var(--orange-deep)}
+.fld label{
+  position:absolute; left:0; top:19px; padding-top:5px;
+  font-family:var(--mono); font-size:.9375rem; color:var(--ink-3);
+  pointer-events:none; transform-origin:0 0;
+  transition:transform .24s var(--ease), color .2s var(--ease), letter-spacing .24s var(--ease);
+}
+.fld input:focus + label,
+.fld input:not(:placeholder-shown) + label{
+  transform:translateY(-20px) scale(.68); letter-spacing:.16em; text-transform:uppercase; color:var(--ink);
+}
+.fld .note{
+  display:block; font-family:var(--mono); font-size:.66rem; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--orange-deep); margin-top:6px;
+  opacity:0; transform:translateY(-3px); transition:.2s var(--ease);
+}
+.fld[data-bad] input{border-bottom-color:var(--orange-deep); border-bottom-width:2px}
+.fld[data-bad] .note{opacity:1; transform:none}
+
+.consent{display:flex; gap:10px; align-items:flex-start; margin:20px 0 0; cursor:pointer}
+.consent input{position:absolute; opacity:0; width:0; height:0}
+.consent .box{
+  flex:none; width:16px; height:16px; margin-top:2px; border:1px solid var(--ink-3);
+  display:grid; place-items:center; transition:.18s var(--ease); background:transparent; border-radius:4px;
+}
+.consent .box svg{width:10px; height:10px; stroke:var(--cream); fill:none; stroke-width:2.6;
+  stroke-linecap:round; stroke-linejoin:round; opacity:0; transform:scale(.5); transition:.18s var(--ease)}
+.consent input:checked + .box{background:var(--ink); border-color:var(--ink)}
+.consent input:checked + .box svg{opacity:1; transform:none}
+.consent input:focus-visible + .box{outline:2px solid var(--orange-deep); outline-offset:2px}
+.consent .t{font-size:.9rem; line-height:1.55; color:var(--ink-2)}
+.consent .t a{color:var(--ink); text-underline-offset:2.5px; text-decoration-thickness:1px}
+
+.go{
+  margin-top:24px; width:100%; height:56px; border:0; cursor:pointer;
+  background:var(--ink); color:var(--cream); position:relative; overflow:hidden;
+  display:grid; place-items:center; border-radius:10px;
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.2em; text-transform:uppercase; font-weight:500;
+  transition:background .2s var(--ease), color .2s var(--ease);
+}
+.go:hover:not(:disabled){background:var(--orange-deep); color:var(--cream)}
+.go:active:not(:disabled){transform:translateY(1px)}
+.go:disabled{cursor:default; opacity:.62}
+.go .lbl{display:flex; align-items:center; gap:12px; transition:.26s var(--ease)}
+.go .lbl svg{width:16px; height:9px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:transform .26s var(--ease)}
+.go:hover:not(:disabled) .lbl svg{transform:translateX(5px)}
+.go[data-busy] .lbl{opacity:0; transform:translateY(-100%)}
+.go .spin{position:absolute; width:14px; height:14px; border:1.5px solid rgba(244,236,221,.3);
+  border-top-color:var(--cream); border-radius:50%; opacity:0; transition:opacity .2s}
+.go[data-busy] .spin{opacity:1; animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.formerr{margin:13px 0 0; font-family:var(--mono); font-size:.7rem; letter-spacing:.05em;
+  line-height:1.6; color:var(--orange-deep); padding-left:12px; border-left:2px solid var(--orange-deep); text-transform:uppercase}
+.formerr:empty{display:none}
+
+/* ── colophon ───────────────────────────────────────────────────── */
+.colophon{display:flex; gap:16px; align-items:baseline; padding-top:clamp(22px,4vh,40px); color:var(--ink-3); flex-wrap:wrap}
+.colophon .sp{flex:1; min-width:0}
+.colophon i{color:var(--ink)}
+
+/* ── success ────────────────────────────────────────────────────── */
+.done{display:none}
+.done h2{font-family:var(--display); font-style:italic; font-weight:500; font-size:clamp(2.3rem,4.8vw,3.5rem);
+  line-height:1; letter-spacing:-.01em; margin:0 0 1.1rem; color:var(--ink)}
+.done h2 .rm{font-style:normal; font-weight:600}
+.done p{margin:0 0 .9rem; color:var(--ink-2); max-width:31rem; line-height:1.62}
+.done .stamp{display:inline-block; margin-top:18px; padding:8px 14px; border:1px solid var(--ink-3); border-radius:8px; color:var(--ink)}
+body[data-sent] .pitch, body[data-sent] form{display:none}
+body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
+
+/* ── the outbox: sent messages on the dark ground ──────────────────── */
+.plate{
+  background:var(--ground-2); border-radius:var(--r); padding:var(--pad);
+  display:flex; flex-direction:column; position:relative; overflow:hidden; min-width:0;
+  border:1px solid var(--line-dark);
+}
+.plate .pr{display:flex; align-items:baseline; gap:12px; color:var(--on-dark-2)}
+.plate .pr .sp{flex:1}
+.stage{
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+  gap:clamp(10px,1.5vh,16px); padding:clamp(22px,4vh,44px) 0; min-width:0;
+}
+
+/* messages come back as small paper bubbles floating on the dark ground */
+.dm{
+  background:var(--cream); border-radius:12px;
+  padding:14px 15px 12px; transform:rotate(var(--rot,0deg));
+  box-shadow:0 16px 34px rgba(0,0,0,.45); max-width:min(430px,100%);
+}
+.dm.alt{background:var(--cream-2)}
+.dm:nth-child(1){align-self:flex-start}
+.dm:nth-child(2){align-self:flex-end; margin-right:clamp(0px,1vw,10px)}
+.dm:nth-child(3){align-self:flex-start; margin-left:clamp(0px,2vw,26px)}
+.dm .who{display:flex; align-items:center; gap:9px; margin-bottom:9px}
+.dm .av{
+  width:29px; height:29px; border-radius:50%; flex:none; display:grid; place-items:center;
+  font-family:var(--mono); font-size:.6rem; letter-spacing:.02em; color:var(--ink); font-weight:600;
+}
+.dm .nm{flex:1; min-width:0}
+.dm .nm b{display:block; font-family:var(--sans); font-size:.87rem; font-weight:600; color:var(--ink);
+  line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.dm .nm span{display:block; font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--ink-3)}
+.dm .tag{
+  flex:none; font-family:var(--mono); font-size:.54rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink); background:rgba(226,112,58,.16); border:1px solid rgba(226,112,58,.5); padding:2px 6px; border-radius:3px;
+}
+.dm .tag.man{background:rgba(156,134,216,.18); border-color:rgba(156,134,216,.55)}
+.dm p{margin:0; font-family:var(--sans); font-size:.885rem; line-height:1.55; color:var(--ink-2)}
+.dm .ft{display:flex; align-items:center; gap:8px; margin-top:11px; padding-top:9px;
+  border-top:1px solid var(--rule); font-family:var(--mono); font-size:.58rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.dm .ft .sp{flex:1}
+.dm .ft .ok{color:var(--orange-deep); display:flex; align-items:center; gap:5px; font-weight:500}
+.dm .ft .ok svg{width:9px; height:9px; stroke:currentColor; fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round}
+
+.tally{
+  display:flex; align-items:stretch; gap:0; border:1px solid var(--line-dark);
+  border-radius:10px; overflow:hidden; margin-top:clamp(8px,1.4vh,14px);
+}
+.tally div{flex:1; padding:11px 13px; border-right:1px solid var(--line-dark); min-width:0}
+.tally div:last-child{border-right:0}
+.tally b{display:block; font-family:var(--display); font-style:italic; font-size:1.6rem; font-weight:600;
+  line-height:1; letter-spacing:-.01em; color:var(--orange);
+  font-variant-numeric:lining-nums tabular-nums; font-feature-settings:"lnum" 1,"tnum" 1}
+.tally span{display:block; font-family:var(--mono); font-size:.56rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--on-dark-3); margin-top:6px}
+.plate .foot{display:flex; gap:14px; align-items:baseline; color:var(--on-dark-3); flex-wrap:wrap}
+.plate .foot .sp{flex:1; min-width:0}
+.plate .foot i{color:var(--on-dark-2)}
+
+/* ── direction switcher ─────────────────────────────────────────── */
+.switcher{
+  position:fixed; top:14px; right:14px; z-index:5;
+  display:flex; align-items:center; gap:8px;
+  background:rgba(15,16,22,.82); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  border:1px solid var(--line-dark); border-radius:999px;
+  padding:6px 8px 6px 12px; font-family:var(--mono); font-size:.62rem; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--on-dark-2);
+}
+.switcher .cur{white-space:nowrap; color:var(--on-dark)}
+.switcher .links{display:flex; gap:2px}
+.switcher a{
+  text-decoration:none; color:var(--on-dark-3); padding:3px 7px; border-radius:999px; transition:.16s var(--ease);
+}
+.switcher a:hover{color:var(--on-dark); background:rgba(244,236,221,.1)}
+.switcher a.on{color:var(--ink); background:var(--orange)}
+@media (max-width:560px){ .switcher .cur{display:none} .switcher{top:10px; right:10px; padding:5px} }
+
+@keyframes rise{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
+.anim{opacity:0; animation:rise .7s var(--ease) both}
+.dm{animation:rise .7s var(--ease) both}
+.rail{animation-delay:.04s}
+h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.17s}
+.kicker{animation-delay:.25s} .deck{animation-delay:.31s}
+.f1{animation-delay:.38s} .f2{animation-delay:.43s} .f3{animation-delay:.48s}
+.consent{animation-delay:.54s} .go{animation-delay:.59s} .colophon{animation-delay:.66s}
+.plate .pr{animation-delay:.12s}
+.dm:nth-child(1){animation-delay:.3s} .dm:nth-child(2){animation-delay:.4s} .dm:nth-child(3){animation-delay:.5s}
+.tally{animation-delay:.6s} .plate .foot{animation-delay:.7s}
+
+@media (prefers-reduced-motion:reduce){
+  .anim,.dm,.done{animation:none !important; opacity:1 !important; transform:rotate(var(--rot,0deg)) !important}
+  .go .spin{animation:none}
+  .bg .blob{animation:none !important}
+  *{transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <div class="grain"></div>
+
+  <!-- b1: loose linocut flower, burnt orange -->
+  <svg class="blob b1" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(100 100)">
+      <path transform="rotate(4) scale(.97)" fill="#E2703A" d="M0,0 C-24,-18 -34,-52 -6,-74 C16,-90 34,-70 30,-44 C27,-24 20,-8 0,0 Z"/>
+      <path transform="rotate(66) scale(1.05)" fill="#E2703A" d="M0,0 C-22,-20 -30,-54 -2,-73 C18,-87 36,-68 29,-42 C25,-23 18,-7 0,0 Z"/>
+      <path transform="rotate(129) scale(.93)" fill="#E2703A" d="M0,0 C-25,-17 -32,-50 -5,-72 C17,-89 35,-71 31,-45 C28,-25 19,-8 0,0 Z"/>
+      <path transform="rotate(184) scale(1.08)" fill="#E2703A" d="M0,0 C-23,-19 -31,-53 -4,-75 C17,-91 35,-69 28,-43 C25,-22 18,-8 0,0 Z"/>
+      <path transform="rotate(246) scale(.96)" fill="#E2703A" d="M0,0 C-24,-18 -33,-51 -6,-73 C16,-88 34,-70 30,-44 C26,-24 19,-8 0,0 Z"/>
+      <path transform="rotate(303) scale(1.02)" fill="#E2703A" d="M0,0 C-22,-20 -30,-55 -3,-74 C19,-88 37,-67 30,-41 C26,-22 18,-7 0,0 Z"/>
+      <path fill="#9C86D8" d="M-19,-3 C-22,-19 -8,-31 8,-27 C24,-23 27,-6 15,6 C4,17 -15,14 -19,-3 Z"/>
+    </g>
+  </svg>
+
+  <!-- b2: candy / lollipop swirl, lavender -->
+  <svg class="blob b2" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#9C86D8" d="M110,14 C158,10 196,46 200,92 C204,140 170,182 120,190 C70,198 22,166 16,116 C10,66 54,20 110,14 Z"/>
+    <path fill="none" stroke="#F4ECDD" stroke-opacity=".55" stroke-width="4" stroke-linecap="round"
+      d="M110,40 C138,42 158,64 156,92 C154,118 130,136 106,132 C86,129 74,112 78,94"/>
+    <rect x="104" y="176" width="10" height="40" rx="5" fill="#7E68C4"/>
+  </svg>
+
+  <!-- b3: small loose flower accent, lavender -->
+  <svg class="blob b3" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(70 70)">
+      <path transform="rotate(10)" fill="#9C86D8" d="M0,0 C-16,-12 -22,-36 -3,-50 C12,-60 24,-46 20,-30 C18,-16 13,-6 0,0 Z"/>
+      <path transform="rotate(82)" fill="#9C86D8" d="M0,0 C-15,-13 -20,-37 -2,-50 C13,-59 25,-45 19,-29 C17,-15 12,-6 0,0 Z"/>
+      <path transform="rotate(154)" fill="#9C86D8" d="M0,0 C-17,-11 -23,-35 -4,-49 C11,-61 23,-47 20,-31 C18,-17 13,-6 0,0 Z"/>
+      <path transform="rotate(226)" fill="#9C86D8" d="M0,0 C-15,-13 -21,-38 -3,-51 C12,-60 24,-45 19,-29 C17,-15 12,-6 0,0 Z"/>
+      <path transform="rotate(298)" fill="#9C86D8" d="M0,0 C-16,-12 -22,-36 -3,-49 C12,-61 25,-46 20,-30 C18,-16 13,-6 0,0 Z"/>
+      <circle r="11" fill="#F4ECDD"/>
+    </g>
+  </svg>
+
+  <!-- b4: seed-pod cluster, burnt orange -->
+  <svg class="blob b4" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="34" cy="60" rx="26" ry="34" fill="#E2703A" transform="rotate(-18 34 60)"/>
+    <ellipse cx="84" cy="46" rx="20" ry="27" fill="#C85A28" transform="rotate(12 84 46)"/>
+    <ellipse cx="122" cy="78" rx="17" ry="23" fill="#E2703A" transform="rotate(-8 122 78)"/>
+    <path d="M8,88 C40,100 100,100 148,70" fill="none" stroke="#9C86D8" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<nav class="switcher mono" aria-label="Design directions">
+  <span class="cur">Night&nbsp;Bloom&nbsp;·&nbsp;3/4</span>
+  <span class="links">
+    <a href="../">Site</a><a href="../one/">1</a><a href="../two/">2</a><a class="on" href="../three/">3</a><a href="../four/">4</a>
+  </span>
+</nav>
+
+<div class="frame">
+<main class="spread">
+
+  <!-- ════════ the cream card, floating on the illustrated ground ════════ -->
+  <section class="leaf">
+
+    <div class="rail anim">
+      <a class="wm" href="../">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="mono">DM&nbsp;<i>Aura</i></span>
+      </a>
+      <span class="sp"></span>
+      <span class="glyphs" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </span>
+      <span class="mono">Early access: <i>closed beta</i></span>
+    </div>
+
+    <div class="body">
+
+      <div class="pitch">
+        <h1>
+          <span class="anim">The DMs</span>
+          <span class="anim tight">come from <span class="rm">you</span></span>
+        </h1>
+
+        <p class="kicker mono anim">
+          <b>No bots.</b> <b>No API keys.</b> <b>You hit send.</b>
+        </p>
+
+        <p class="deck anim">
+          Import your list, tap once, and X opens with the message
+          <mark>already written</mark> — you read it, you send it. Every DM leaves as
+          a real tap, so there is <mark>nothing to limit</mark> and nothing to explain.
+          Early access opens in batches.
+        </p>
+      </div>
+
+      <form id="form" novalidate>
+        <div class="fld f1 anim">
+          <input id="email" name="email" type="email" placeholder=" " autocomplete="email"
+            inputmode="email" autocapitalize="none" spellcheck="false" required />
+          <label for="email">Work email</label>
+          <span class="note" id="email-note"></span>
+        </div>
+
+        <div class="pair">
+          <div class="fld f2 anim">
+            <input id="first" name="firstName" type="text" placeholder=" " autocomplete="given-name" />
+            <label for="first">First name</label>
+          </div>
+          <div class="fld f2 anim">
+            <input id="last" name="lastName" type="text" placeholder=" " autocomplete="family-name" />
+            <label for="last">Last name</label>
+          </div>
+        </div>
+
+        <div class="fld f3 anim">
+          <input id="company" name="company" type="text" placeholder=" " autocomplete="organization" />
+          <label for="company">Company</label>
+        </div>
+
+        <label class="consent anim">
+          <input type="checkbox" id="consent" name="consent" />
+          <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
+          <span class="t">Send me build updates and my early-access invite.
+            <a href="#privacy">Privacy</a> &amp; <a href="#terms">Terms</a>.</span>
+        </label>
+
+        <!-- Formspree's spam trap: real people never fill this in. -->
+        <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true"
+          style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+
+        <button class="go anim" type="submit" id="go">
+          <span class="lbl">Request early access
+            <svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg>
+          </span>
+          <span class="spin" aria-hidden="true"></span>
+        </button>
+
+        <p class="formerr mono" id="formerr" role="alert"></p>
+      </form>
+
+      <div class="done" id="done" role="status" aria-live="polite" tabindex="-1">
+        <h2><span class="rm">You're</span> on the list</h2>
+        <p id="doneline">Check your inbox — a confirmation is on its way.</p>
+        <p>Invites go out in small batches so we can actually read the replies.
+          Answer that first email with what you're sending and who you're sending it
+          to; it decides what gets built next.</p>
+        <p class="stamp mono">Nothing else to do for now</p>
+      </div>
+
+    </div>
+
+    <div class="colophon mono anim">
+      <span>Built by <i>DM Aura</i></span>
+      <span class="sp"></span>
+      <span>Status: <i>waitlist open</i></span>
+    </div>
+  </section>
+
+  <!-- ════════ the outbox: messages that went out ════════ -->
+  <aside class="plate">
+    <div class="pr mono anim">
+      <span>Fig. 1 — <i>the outbox</i></span>
+      <span class="sp"></span>
+      <span aria-hidden="true">Sample</span>
+    </div>
+
+    <div class="stage">
+
+      <article class="dm" style="--rot:-1.6deg">
+        <div class="who">
+          <span class="av" style="background:#9C86D8">MR</span>
+          <span class="nm"><b>Maya Reyes</b><span>@mayaships</span></span>
+          <span class="tag">Prefilled</span>
+        </div>
+        <p>Maya — your thread on running design systems solo is the clearest thing
+          I've read on it. I'm Alex, I help small teams turn an audience into pipeline.
+          Worth a look?</p>
+        <div class="ft">
+          <span>09:41</span><span class="sp"></span>
+          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Sent</span>
+        </div>
+      </article>
+
+      <article class="dm alt" style="--rot:1.3deg">
+        <div class="who">
+          <span class="av" style="background:#E2703A">DO</span>
+          <span class="nm"><b>Devon Okoye</b><span>@devonbuilds</span></span>
+          <span class="tag">Prefilled</span>
+        </div>
+        <p>Hey Devon — caught your post on cold outbound being a numbers game and
+          hating it. Same. Built something for that. Want the short version?</p>
+        <div class="ft">
+          <span>09:44</span><span class="sp"></span>
+          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Replied</span>
+        </div>
+      </article>
+
+      <article class="dm" style="--rot:-.7deg">
+        <div class="who">
+          <span class="av" style="background:#EEE1CB">PN</span>
+          <span class="nm"><b>Priya Nair</b><span>@priyanair</span></span>
+          <span class="tag man">Copied</span>
+        </div>
+        <p>Priya — no numeric ID on your row, so this one got copied to the clipboard
+          and pasted by hand. Took nine seconds instead of one.</p>
+        <div class="ft">
+          <span>09:46</span><span class="sp"></span>
+          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Sent</span>
+        </div>
+      </article>
+
+      <div class="tally anim">
+        <div><b>37</b><span>Sent today</span></div>
+        <div><b>12</b><span>Day streak</span></div>
+        <div><b>6</b><span>Replies</span></div>
+      </div>
+    </div>
+
+    <div class="foot mono anim">
+      <span>Mockup — <i>names are fictional</i></span>
+      <span class="sp"></span>
+      <span>DM&nbsp;<i>Aura</i></span>
+    </div>
+  </aside>
+
+</main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var form = document.getElementById("form");
+  var go   = document.getElementById("go");
+  var err  = document.getElementById("formerr");
+  var email = document.getElementById("email");
+  var emailFld = email.closest(".fld");
+  var note = document.getElementById("email-note");
+
+  var ENDPOINT = "https://formspree.io/f/xnpqanrz";
+
+  // Deliberately permissive: the server is the real judge of an address,
+  // and a regex that rejects a valid one costs a signup.
+  function looksLikeEmail(v){
+    return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(String(v||"").trim());
+  }
+  function flag(msg){
+    if(msg){ emailFld.setAttribute("data-bad",""); note.textContent = msg; }
+    else   { emailFld.removeAttribute("data-bad");  note.textContent = ""; }
+  }
+  email.addEventListener("input", function(){ if(emailFld.hasAttribute("data-bad")) flag(""); });
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    err.textContent = "";
+
+    if(!looksLikeEmail(email.value)){
+      flag("That address doesn't look complete");
+      email.focus();
+      return;
+    }
+    flag("");
+
+    var data = new FormData(form);
+    data.set("consent", document.getElementById("consent").checked ? "yes" : "no");
+    data.set("_subject", "DM Aura early access — " + email.value.trim());
+
+    go.setAttribute("data-busy","");
+    go.disabled = true;
+
+    fetch(ENDPOINT, { method:"POST", body:data, headers:{ Accept:"application/json" } })
+      .then(function(res){
+        return res.json().catch(function(){ return {}; }).then(function(body){
+          if(res.ok) return body;
+          // Formspree hands back field-level reasons; show the first one.
+          var why = body && body.errors && body.errors.length
+            ? body.errors.map(function(x){ return x.message; }).join(" ")
+            : "Something went wrong on our end. Try again in a moment.";
+          throw new Error(why);
+        });
+      })
+      .then(function(){
+        document.getElementById("doneline").textContent =
+          "We'll write to " + email.value.trim() + " when your invite is ready.";
+        document.body.setAttribute("data-sent","");
+        document.getElementById("done").focus();
+      })
+      .catch(function(e2){
+        go.removeAttribute("data-busy");
+        go.disabled = false;
+        err.textContent = e2 && e2.message
+          ? e2.message
+          : "Couldn't reach the server. Check your connection and try again.";
+      });
+  });
+})();
+</script>
+</body>
+</html>
