@@ -723,6 +723,18 @@ const CLOUD_ON = !!(CLOUD_CFG.SUPABASE_URL && CLOUD_CFG.SUPABASE_ANON_KEY && win
 const sb = CLOUD_ON ? window.supabase.createClient(CLOUD_CFG.SUPABASE_URL, CLOUD_CFG.SUPABASE_ANON_KEY) : null;
 let cloudUser = null;   // set once signed in; cacheKey() below keys local storage off it
 
+/* ?plan=monthly|lifetime arrives from the landing page's pricing buttons
+   (landing/index.html now sends people here to sign up first, instead of
+   starting checkout anonymously) — captured once at load so it survives
+   the sign-up screen, then fires automatically the moment the paywall
+   shows, continuing the checkout they already picked instead of making
+   them pick it again. Cleared after it fires once; a cancelled checkout's
+   cancelUrl has no query string, so returning from Stripe never re-fires it. */
+let requestedPlan = (() => {
+  const p = new URLSearchParams(location.search).get("plan");
+  return (p === "monthly" || p === "lifetime") ? p : null;
+})();
+
 let db = blank();
 const cacheKey = () => KEY_PREFIX + (cloudUser ? cloudUser.id : "default");
 
@@ -2954,7 +2966,15 @@ async function enterApp(user){
   hideAuth();
   const paid = await isPaidAccount(cameFromCheckout());
   history.replaceState(null, "", location.pathname);   // drop ?checkout=success either way
-  if(!paid){ showPaywall(); return; }
+  if(!paid){
+    showPaywall();
+    if(requestedPlan){
+      const plan = requestedPlan;
+      requestedPlan = null;
+      startCheckoutFromApp(plan, $(plan === "monthly" ? "#payMonthly" : "#payLifetime"));
+    }
+    return;
+  }
   hidePaywall();
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();

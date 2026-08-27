@@ -466,11 +466,18 @@ actual purchase (step 8) and, when ready, swapping in a `sk_live_...` key
 and a second live-mode webhook. Re-run these steps as-is if you ever need
 to point this at a different Supabase or Stripe project.
 
-The landing page's two pricing buttons (`landing/index.html`) send people to
-Stripe Checkout, and the app (`app/index.html`) shows a paywall screen —
-instead of the leads sheet — to any signed-in account that hasn't paid.
-Requires the Supabase project from the section above; the paid/unpaid flag
-lives in Postgres, not in the browser, so it can't be spoofed from devtools.
+The landing page's two pricing buttons (`landing/index.html`) are plain links
+to `app/?plan=monthly` or `app/?plan=lifetime` — checkout never starts
+anonymously. The app signs the person up (or in) first, and once they're
+authenticated it shows a paywall screen — instead of the leads sheet — to
+any signed-in account that hasn't paid, then immediately continues to
+Stripe Checkout for whichever plan they picked on the landing page
+(`requestedPlan` in `app/index.html`). That order — sign up, then pay, then
+the onboarding below — means the email Stripe records always matches the
+signed-in account, so the paid flag can never end up attached to a
+different email than the one someone actually logs in with. Requires the
+Supabase project from the section above; the paid/unpaid flag lives in
+Postgres, not in the browser, so it can't be spoofed from devtools.
 
 How it fits together: the browser never talks to Stripe's secret API
 directly — it calls a small Supabase **Edge Function** that creates the
@@ -590,11 +597,13 @@ supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
 
 Use one of [Stripe's test cards](https://docs.stripe.com/testing) (e.g.
 `4242 4242 4242 4242`, any future expiry, any CVC) while `STRIPE_SECRET_KEY`
-is a `sk_test_...` key. Click a pricing button on `landing/index.html`,
-complete checkout, and you should land back on `app/` — sign up or sign in
-with the same email, and the paywall should clear within a couple of
-seconds (it retries a few times right after a `?checkout=success` redirect,
-since the webhook can lag slightly behind Stripe's own redirect). Check
+is a `sk_test_...` key. Click a pricing button on `landing/index.html` — it
+takes you to `app/`, where you sign up (or sign in) first, then checkout
+starts on its own for the plan you picked. Complete it and you should land
+back on `app/`, where the paywall clears within a couple of seconds (it
+retries a few times right after a `?checkout=success` redirect, since the
+webhook can lag slightly behind Stripe's own redirect) and the onboarding
+screen from the section below runs once before the leads sheet. Check
 **Developers → Webhooks → (your endpoint) → recent deliveries** in Stripe
 if it doesn't; a failed delivery there means the URL, `--no-verify-jwt`, or
 `STRIPE_WEBHOOK_SECRET` is off. Swap in your `sk_live_...` key (and set up

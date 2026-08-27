@@ -15,7 +15,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
-<script src="config.js"></script>
 
 <style>
 /* ══════════════════════════════════════════════════════════════════
@@ -713,7 +712,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Step-by-step guides for finding IDs</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Cancel anytime</li>
           </ul>
-          <button class="btn ghost" type="button" id="ctaMonthly">Subscribe monthly<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></button>
+          <a class="btn ghost" href="../app/?plan=monthly">Subscribe monthly<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
         </div>
         <div class="pcard feat">
           <span class="pk">Best value</span>
@@ -726,7 +725,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Step-by-step guides for finding IDs</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Multi-device sync when it ships</li>
           </ul>
-          <button class="btn primary" type="button" id="ctaLifetime">Get lifetime access<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></button>
+          <a class="btn primary" href="../app/?plan=lifetime">Get lifetime access<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
         </div>
       </div>
       <p class="pnote" id="pricingNote">Secure checkout via Stripe. Cancel the monthly plan anytime.</p>
@@ -830,47 +829,10 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
     }
   });
 
-  // ── Stripe checkout ──────────────────────────────────────────────
-  // Buttons only ever send a plan name; the Edge Function resolves it to a
-  // real Stripe Price id, so nothing here can be tampered with to pay less.
-  var CFG = window.DMAURA_CONFIG || {};
-  function startCheckout(plan, btn){
-    if(!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY){
-      alert("Checkout isn't configured yet.");
-      return;
-    }
-    var label = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Redirecting…";
-    fetch(CFG.SUPABASE_URL + "/functions/v1/create-checkout-session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + CFG.SUPABASE_ANON_KEY,
-        "apikey": CFG.SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify({
-        plan: plan,
-        successUrl: location.origin + "/app/?checkout=success",
-        cancelUrl: location.href
-      })
-    })
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        if(data && data.url){ location.href = data.url; return; }
-        throw new Error(data && data.error || "no checkout url returned");
-      })
-      .catch(function(err){
-        console.error(err);
-        alert("Couldn't start checkout — try again in a moment.");
-        btn.disabled = false;
-        btn.textContent = label;
-      });
-  }
-  var ctaMonthly = document.getElementById("ctaMonthly");
-  var ctaLifetime = document.getElementById("ctaLifetime");
-  if(ctaMonthly) ctaMonthly.addEventListener("click", function(){ startCheckout("monthly", ctaMonthly); });
-  if(ctaLifetime) ctaLifetime.addEventListener("click", function(){ startCheckout("lifetime", ctaLifetime); });
+  // Pricing buttons are plain links to ../app/?plan=monthly|lifetime — the
+  // app signs people up first, then continues straight to that plan's
+  // Stripe checkout once they're authenticated (see requestedPlan in
+  // app/index.html). Checkout never starts anonymously from this page.
 })();
 </script>
 </body>
