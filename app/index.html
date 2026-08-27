@@ -300,11 +300,12 @@ textarea.msg{width:100%;min-height:170px;border:1px solid var(--line);border-rad
 .crmrow .top .nm b{display:block;font-size:14px;font-weight:620;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crmrow .top .nm span{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crmrow .badge{font-size:10.5px;font-weight:660;padding:3px 8px;border-radius:999px;color:#fff;flex:none;white-space:nowrap}
+.crmrow .crmstat{margin:0;padding:0}
+.crmrow .crmstat .o{padding:6px 10px;font-size:12px}
 .crmrow .f{margin:0}
 .crmrow .f input,.crmrow .f textarea{background:var(--surface)}
 .crmrow .acts{display:flex;gap:6px}
 .crmrow .acts button{flex:1;font-size:12.5px;font-weight:620;padding:8px 9px;border:1px solid var(--line);border-radius:8px;color:var(--ink-2);background:var(--surface);white-space:nowrap}
-.crmrow .acts button.on{background:var(--good);color:#fff;border-color:var(--good)}
 
 /* ---------- import ---------- */
 .help{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 12px}
@@ -880,10 +881,10 @@ function fixCaps(s){
 function plural(n, one, many){ return n===1 ? one : (many||one+"s"); }
 
 let toastT, toastUndo = null;
-function toast(msg, undo){
+function toast(msg, undo, label){
   const t = $("#toast");
   toastUndo = undo || null;
-  t.innerHTML = esc(msg) + (undo ? ' <b class="undo">Undo</b>' : "");
+  t.innerHTML = esc(msg) + (undo ? ` <b class="undo">${esc(label||"Undo")}</b>` : "");
   t.classList.add("on");
   clearTimeout(toastT);
   toastT = setTimeout(() => { t.classList.remove("on"); toastUndo = null; }, undo ? 6000 : 2600);
@@ -1327,11 +1328,57 @@ function counts(){
   c.contacted = db.leads.filter(l => l.dms.length).length;
   return c;
 }
+// Weeks of daily totals rolled up into 7-day buckets, oldest first.
+function seriesWeekly(weeks){
+  const days = series(weeks*7);
+  const out = [];
+  for(let i=0;i<weeks;i++){
+    const chunk = days.slice(i*7, i*7+7);
+    out.push({day:chunk[0].day, end:chunk[chunk.length-1].day, n:chunk.reduce((a,d)=>a+d.n,0)});
+  }
+  return out;
+}
+function campaignStats(){
+  const groups = new Map();
+  db.leads.forEach(l => {
+    const name = (l.listName||"").trim() || "No list";
+    if(!groups.has(name)) groups.set(name, {name, total:0, sent:0, replied:0, booked:0});
+    const g = groups.get(name);
+    g.total++;
+    if(l.dms.length) g.sent++;
+    if(l.status === "replied") g.replied++;
+    if(l.status === "booked") g.booked++;
+  });
+  return Array.from(groups.values())
+    .map(g => Object.assign(g, {rate: g.sent ? Math.round((g.replied+g.booked)/g.sent*100) : 0}))
+    .sort((a,b) => b.sent - a.sent);
+}
+function templateStats(){
+  return db.templates.map(t => {
+    const uses = allDms().filter(x => x.dm.tplId === t.id);
+    const replied = uses.filter(x => ["replied","booked"].includes(x.lead.status)).length;
+    return {id:t.id, name:t.name, sent:uses.length, replied, rate: uses.length ? Math.round(replied/uses.length*100) : 0};
+  }).sort((a,b) => b.sent - a.sent);
+}
+function bestTemplate(){
+  const MIN_SENT = 3;   // don't crown a template off one lucky reply
+  const all = templateStats().filter(t => t.sent > 0);
+  const qualified = all.filter(t => t.sent >= MIN_SENT);
+  const pool = qualified.length ? qualified : all;
+  if(!pool.length) return null;
+  return pool.slice().sort((a,b) => b.rate - a.rate || b.sent - a.sent)[0];
+}
 
 /* ============================== list ============================== */
 const FOLLOWUP_DAYS = 3;
 function daysSince(ts){ return ts ? (Date.now()-ts)/864e5 : 1e9; }
 function lastDmAt(l){ return l.dms.length ? l.dms[l.dms.length-1].at : 0; }
+// Cadence guard: earliest a next-touch may land, FOLLOWUP_DAYS after the last DM.
+// null means there's no prior DM to pace against, so any date is fair game.
+function cadenceFloor(l){
+  const last = lastDmAt(l);
+  return last ? dayKey(last + FOLLOWUP_DAYS*864e5) : null;
+}
 
 const FILTERS = [
   {id:"queue",   label:"Queue",      fn:l => l.status === "queued"},
@@ -1346,7 +1393,8 @@ let state = {
   filter:"queue", q:"", leadId:null, tab:"msg",
   selecting:false, sel:new Set(),
   focusIds:[], focusAt:0,
-  mode:"send", crmMonth: today().slice(0,7), crmDay: null
+  mode:"send", crmMonth: today().slice(0,7), crmDay: null,
+  statsChart:"daily"
 };
 
 function visible(){
@@ -1556,7 +1604,12 @@ function renderInfo(l){
     f("website","Website", l.website) +
     f("tags","Tags", l.tags.join(", "), "text", "Comma separated.") +
     f("listName","List", l.listName) +
-    f("followUp","Follow-up date", l.followUp, "date", "Shows up on the CRM calendar — see the CRM icon in the top bar.") +
+    (() => {
+      const floor = cadenceFloor(l);
+      return `<div class="f"><label for="if_followUp">Follow-up date</label>
+        <input id="if_followUp" data-k="followUp" type="date" value="${esc(l.followUp||"")}" ${floor?`min="${floor}"`:""} />
+        <div class="hint">Shows up on the CRM calendar — see the CRM icon in the top bar.${floor?` Cadence guard: earliest is ${esc(fmtDay(floor))}.`:""}</div></div>`;
+    })() +
     `<div class="f"><label for="if_note">Note</label><textarea id="if_note" data-k="note">${esc(l.note)}</textarea></div>` +
     (l.status !== "queued"
       ? `<button type="button" class="btn" id="btnRequeue" style="width:100%">↺ Add back to campaign (mark unsent)</button>`
@@ -1701,7 +1754,18 @@ $("#infoFields").addEventListener("input", e => {
   else if(k === "tags") v = v.split(/[,;|]/).map(s=>s.trim()).filter(Boolean);
   else if(k === "handle") v = String(v).replace(/^@/,"").trim();
   else if(k === "xid") v = String(v).replace(/\D/g,"");
-  else if(k === "followUp") v = v || null;
+  else if(k === "followUp"){
+    v = v || null;
+    if(v){
+      const floor = cadenceFloor(l);
+      if(floor && v < floor){
+        el.value = l.followUp || "";
+        toast(`Too soon — cadence guard holds next-touch to ${FOLLOWUP_DAYS}+ days after the last DM (earliest ${fmtDay(floor)}).`,
+          () => { l.followUp = v; touch(l); save(); renderInfo(l); renderStats(); }, "Set anyway");
+        return;
+      }
+    }
+  }
   l[k] = v; touch(l); save();
   if(k === "xid"){ $("#shWarn").innerHTML = setupWarnHTML(l) + (canPrefill(l) ? "" : idWarnHTML()); syncSendLink(); }
   renderStats();
@@ -2095,12 +2159,11 @@ $("#btnAdd").addEventListener("click", () => {
 const TOKENS = ["{first}","{name}","{handle}","{bio}","{bioshort}","{topic}","{followers}","{location}","{me}","{company}","{pitch}","{question}"];
 
 function openTemplates(){
-  const rows = db.templates.map(t => {
-    const uses = allDms().filter(x => x.dm.tplId === t.id);
-    const replies = uses.filter(x => ["replied","booked"].includes(x.lead.status)).length;
-    const rate = uses.length ? Math.round(replies/uses.length*100) + "% reply" : "unused";
+  const best = bestTemplate();
+  const rows = templateStats().map(t => {
+    const rate = t.sent ? t.rate + "% reply" : "unused";
     return `<div class="row ${t.id===db.settings.tplId?"on":""}">
-      <div class="nm"><b>${esc(t.name)}</b><span>${uses.length} sent · ${rate}</span></div>
+      <div class="nm"><b>${esc(t.name)}${best && best.id===t.id ? ' <span class="mini" style="color:var(--warn);border-color:var(--warn)">★ Best</span>' : ""}</b><span>${t.sent} sent · ${rate}</span></div>
       ${t.id===db.settings.tplId
         ? `<span class="mini" style="color:var(--send);border-color:var(--send)">Default</span>`
         : `<button class="mini" data-use="${t.id}">Make default</button>`}
@@ -2181,6 +2244,24 @@ $("#btnTpl").addEventListener("click", openTemplates);
    "replied" status, so it can't drift out of sync with the funnel or
    reply-rate stats kept elsewhere.
 ==================================================================== */
+// The CRM's own 4-state status, layered on top of the full STATUS set so a
+// lead worked outside the sending queue (a call, a DM sent elsewhere) still
+// has somewhere to go. Maps onto the existing funnel statuses so nothing
+// drifts out of sync with the reply-rate stats kept elsewhere.
+const CRM_STATUS = {
+  contacted: {label:"Contacted", color:"var(--send)",   to:"sent"},
+  replied:   {label:"Replied",   color:"var(--good)",   to:"replied"},
+  booked:    {label:"Booked",    color:"var(--violet)", to:"booked"},
+  dead:      {label:"Dead",      color:"var(--bad)",    to:"no"}
+};
+const CRM_STATUS_ORDER = ["contacted","replied","booked","dead"];
+function crmStatusKey(l){
+  if(l.status === "sent") return "contacted";
+  if(l.status === "replied") return "replied";
+  if(l.status === "booked") return "booked";
+  if(l.status === "no" || l.status === "skip") return "dead";
+  return null;   // queued — not worked yet
+}
 function setMode(mode){
   state.mode = mode;
   $$("#modeSwitch button").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-mode")===mode)));
@@ -2234,8 +2315,12 @@ function calendarHTML(ym){
 function crmRowHTML(l){
   const st = STATUS[l.status];
   const due = needsFollowUp(l) && l.followUp <= today();
-  const respBtn = l.status === "booked" ? "" :
-    `<button type="button" class="${l.status==='replied'?'on':''}" data-responded>${l.status==='replied' ? "✓ Responded" : "Mark responded"}</button>`;
+  const csKey = crmStatusKey(l);
+  const floor = cadenceFloor(l);
+  const pills = CRM_STATUS_ORDER.map(k => {
+    const cs = CRM_STATUS[k];
+    return `<button type="button" class="o" data-crmst="${k}" aria-pressed="${csKey===k}" style="--oc:${cs.color}">${cs.label}</button>`;
+  }).join("");
   return `<div class="crmrow ${due?"due":""}" data-lead="${l.id}">
     <div class="top">
       ${avatarHTML(l)}
@@ -2245,9 +2330,11 @@ function crmRowHTML(l){
       </button>
       <span class="badge" style="background:${st.color}">${esc(st.label)}</span>
     </div>
-    <div class="f"><label>Follow-up date</label><input type="date" data-k="followUp" value="${l.followUp||""}" /></div>
+    <div class="ogrid crmstat">${pills}</div>
+    <div class="f"><label>Next-touch date</label><input type="date" data-k="followUp" value="${l.followUp||""}" ${floor?`min="${floor}"`:""} /></div>
+    ${floor ? `<p class="help" style="margin:-4px 0 0">Cadence guard: earliest is ${esc(fmtDay(floor))} (${FOLLOWUP_DAYS}d since last DM)</p>` : ""}
     <div class="f"><label>Note</label><textarea data-k="note" rows="2" placeholder="Notes on this lead…">${esc(l.note)}</textarea></div>
-    <div class="acts">${respBtn}<button type="button" data-requeue>↺ Re-add, unsent</button></div>
+    <div class="acts"><button type="button" data-requeue>↺ Re-add, unsent</button></div>
   </div>`;
 }
 function crmListHTML(){
@@ -2284,8 +2371,10 @@ $("#crmBody").addEventListener("click", e => {
   if(openL){ openLead(openL.getAttribute("data-openlead")); return; }
   const row = e.target.closest("[data-lead]"); if(!row) return;
   const l = leadById(row.getAttribute("data-lead")); if(!l) return;
-  if(e.target.closest("[data-responded]")){
-    l.status = l.status === "replied" ? (l.dms.length ? "sent" : "queued") : "replied";
+  const stBtn = e.target.closest("[data-crmst]");
+  if(stBtn){
+    const key = stBtn.getAttribute("data-crmst");
+    l.status = crmStatusKey(l) === key ? "queued" : CRM_STATUS[key].to;
     touch(l); save(); renderCRM(); renderAll();
     return;
   }
@@ -2305,7 +2394,17 @@ $("#crmBody").addEventListener("change", e => {
   const el = e.target.closest("[data-k]"); if(!el || el.getAttribute("data-k") !== "followUp") return;
   const row = e.target.closest("[data-lead]"); if(!row) return;
   const l = leadById(row.getAttribute("data-lead")); if(!l) return;
-  l.followUp = el.value || null; touch(l); save();
+  const v = el.value || null;
+  if(v){
+    const floor = cadenceFloor(l);
+    if(floor && v < floor){
+      el.value = l.followUp || "";
+      toast(`Too soon — cadence guard holds next-touch to ${FOLLOWUP_DAYS}+ days after the last DM (earliest ${fmtDay(floor)}).`,
+        () => { l.followUp = v; touch(l); save(); renderCRM(); }, "Set anyway");
+      return;
+    }
+  }
+  l.followUp = v; touch(l); save();
   renderCRM();
 });
 
@@ -2315,8 +2414,9 @@ function openStats(){
   const c = counts();
   const n = sentToday();
   const goal = +db.settings.dailyGoal || 0;
-  const s30 = series(30);
-  const best = s30.slice().sort((a,b) => b.n-a.n)[0] || {n:0};
+  const weekly = state.statsChart === "weekly";
+  const s30 = weekly ? seriesWeekly(12) : series(30);
+  const dailyBest = series(30).slice().sort((a,b) => b.n-a.n)[0] || {n:0};
   const allTime = c.dms;
   const last7 = series(7).reduce((a,b) => a+b.n, 0);
 
@@ -2333,8 +2433,8 @@ function openStats(){
     </div>` : "";
 
   const max = Math.max(1, ...s30.map(d => d.n));
-  const bars = s30.map((d,i) => `<div class="bar ${d.n?"":"zero"} ${d.day===today()?"today":""}"
-      style="height:${d.n ? Math.max(3, Math.round(d.n/max*100)) : 2}%" data-i="${i}" title="${d.day}: ${d.n}"></div>`).join("");
+  const bars = s30.map((d,i) => `<div class="bar ${d.n?"":"zero"} ${!weekly && d.day===today()?"today":""}"
+      style="height:${d.n ? Math.max(3, Math.round(d.n/max*100)) : 2}%" data-i="${i}"></div>`).join("");
 
   // 18 weeks of squares, Monday-first columns.
   const heatDays = 126;
@@ -2358,16 +2458,32 @@ function openStats(){
       <span class="track"><i style="--fc:${col};width:${Math.round(v/fmax*100)}%"></i></span>
       <span class="vv"><b>${v}</b> ${c.total?Math.round(v/c.total*100):0}%</span></div>`).join("");
 
+  const camp = campaignStats();
+  const campHTML = camp.length ? camp.map(g => `<div class="row">
+      <div class="nm"><b>${esc(g.name)}</b><span>${g.sent} sent of ${g.total} · ${g.replied+g.booked} replied · ${g.rate}% reply</span></div>
+    </div>`).join("") : `<p class="help" style="margin:6px 0">No lists imported yet.</p>`;
+
+  const best = bestTemplate();
+  const tpl = templateStats();
+  const tplHTML = tpl.length ? tpl.map(t => `<div class="row">
+      <div class="nm"><b>${esc(t.name)}${best && best.id===t.id ? ' <span class="mini" style="color:var(--warn);border-color:var(--warn)">★ Best</span>' : ""}</b>
+        <span>${t.sent} sent · ${t.replied} replied · ${t.sent ? t.rate+"% reply" : "unused"}</span></div>
+    </div>`).join("") : `<p class="help" style="margin:6px 0">No templates yet.</p>`;
+
   modal("Your numbers", `
     ${ringHTML}
     <div class="heroes">
       <div class="hero"><b style="color:var(--warn)">${st.current}</b><span>Day streak</span><i>Best: ${st.longest} ${plural(st.longest,"day")}</i></div>
       <div class="hero"><b>${last7}</b><span>Last 7 days</span><i>${(last7/7).toFixed(1)}/day</i></div>
       <div class="hero"><b>${allTime}</b><span>DMs all time</span><i>${st.total} active ${plural(st.total,"day")}</i></div>
-      <div class="hero"><b>${best.n}</b><span>Best day</span><i>${best.n ? esc(fmtDay(best.day)) : "—"}</i></div>
+      <div class="hero"><b>${dailyBest.n}</b><span>Best day</span><i>${dailyBest.n ? esc(fmtDay(dailyBest.day)) : "—"}</i></div>
     </div>
 
-    <div class="section">Last 30 days</div>
+    <div class="section">Volume</div>
+    <div class="ogrid" style="margin:0 0 8px;padding:0">
+      <button type="button" class="o" data-chart="daily" aria-pressed="${!weekly}" style="--oc:var(--send)">Daily · 30d</button>
+      <button type="button" class="o" data-chart="weekly" aria-pressed="${weekly}" style="--oc:var(--send)">Weekly · 12w</button>
+    </div>
     <div class="chartwrap">
       <div class="chart" id="chart">
         <div class="gridline" style="bottom:100%"><span>${max}</span></div>
@@ -2375,7 +2491,7 @@ function openStats(){
         ${bars}
         <div class="tip" id="tip"></div>
       </div>
-      <div class="xlab"><span>${esc(fmtDay(s30[0].day))}</span><span>today</span></div>
+      <div class="xlab"><span>${esc(fmtDay(s30[0].day))}</span><span>${weekly ? "this week" : "today"}</span></div>
     </div>
 
     <div class="section">Don't break the chain</div>
@@ -2384,15 +2500,27 @@ function openStats(){
 
     <div class="section">Where the list stands</div>
     <div class="funnel">${funHTML}</div>
-  `, `<button class="btn primary" id="stClose">Close</button>`);
+
+    <div class="section">By campaign</div>
+    <div class="rows">${campHTML}</div>
+
+    <div class="section">By template</div>
+    <div class="rows">${tplHTML}</div>
+  `, `<button class="btn" id="stExport">Export CSV</button><button class="btn primary" id="stClose">Close</button>`);
 
   $("#stClose").addEventListener("click", closeSheet);
+  $("#stExport").addEventListener("click", exportAnalytics);
+  $("#mBody").querySelector(".ogrid").addEventListener("click", e => {
+    const b = e.target.closest("[data-chart]"); if(!b) return;
+    state.statsChart = b.getAttribute("data-chart");
+    openStats();
+  });
   const chart = $("#chart"), tip = $("#tip");
   chart.addEventListener("pointermove", e => {
     const b = e.target.closest(".bar");
     if(!b){ tip.classList.remove("on"); return; }
     const d = s30[+b.getAttribute("data-i")];
-    tip.innerHTML = `<b>${d.n}</b> on ${esc(fmtDay(d.day))}`;
+    tip.innerHTML = weekly ? `<b>${d.n}</b> ${esc(fmtDay(d.day))}–${esc(fmtDay(d.end))}` : `<b>${d.n}</b> on ${esc(fmtDay(d.day))}`;
     const r = chart.getBoundingClientRect(), br = b.getBoundingClientRect();
     tip.style.left = (br.left - r.left + br.width/2) + "px";
     tip.style.bottom = (r.bottom - br.top + 6) + "px";
@@ -2573,6 +2701,19 @@ const CSV_COLS = ["handle","xid","name","bio","followers","following","location"
 function csvCell(v){
   const s = String(v==null?"":v);
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function exportAnalytics(){
+  const lines = ["Campaign,Sent,Replied,Reply rate"];
+  campaignStats().forEach(g => lines.push([g.name, g.sent, g.replied+g.booked, g.rate+"%"].map(csvCell).join(",")));
+  lines.push("");
+  lines.push("Template,Sent,Replied,Reply rate,Best");
+  const best = bestTemplate();
+  templateStats().forEach(t => lines.push([t.name, t.sent, t.replied, t.sent?t.rate+"%":"—", best&&best.id===t.id?"yes":""].map(csvCell).join(",")));
+  lines.push("");
+  lines.push("Week starting,Sent");
+  seriesWeekly(12).forEach(w => lines.push([w.day, w.n].map(csvCell).join(",")));
+  download("dmaura-analytics-" + today() + ".csv", lines.join("\n"), "text/csv;charset=utf-8");
+  toast("Analytics exported");
 }
 $("#btnExport").addEventListener("click", () => {
   const rows = visible();
