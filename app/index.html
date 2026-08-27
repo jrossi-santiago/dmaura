@@ -266,6 +266,42 @@ textarea.msg{width:100%;min-height:170px;border:1px solid var(--line);border-rad
 .pace{text-align:center;font-size:11.5px;color:var(--muted);padding:0 16px 8px;font-family:var(--mono)}
 .pace.warn{color:var(--warn);font-weight:640}
 
+/* ---------- CRM (separate full screen from sending/focus) ---------- */
+.crm{position:fixed;inset:0;z-index:58;background:var(--ground);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,0,1)}
+.crm.on{transform:translateY(0)}
+@media (prefers-reduced-motion:reduce){.crm{transition:none}}
+.crmbar{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid var(--line-soft);flex:none}
+.crmbar h2{margin:0;font-size:17px;font-weight:680;flex:1;letter-spacing:-.01em}
+.crmwrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:760px;margin:0 auto;width:100%;padding:14px 16px calc(24px + env(safe-area-inset-bottom))}
+
+.calhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.calhead b{flex:1;font-size:15px;font-weight:660;text-align:center}
+.calhead button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-2);flex:none}
+.calhead button:hover{background:var(--surface-2)}
+.calhead svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.caldow{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:center;font-weight:660;padding-bottom:4px}
+.calday{aspect-ratio:1;border-radius:9px;border:1px solid var(--line-soft);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.calday.out{visibility:hidden}
+.calday.today{border-color:var(--send);color:var(--send)}
+.calday .dot{width:5px;height:5px;border-radius:50%;background:var(--send)}
+.calday.due{background:color-mix(in srgb,var(--bad) 18%,var(--surface));border-color:var(--bad);color:var(--bad);font-weight:680}
+.calday.due .dot{background:var(--bad)}
+.calday.sel{outline:2px solid var(--ink);outline-offset:1px}
+
+.crmrow{display:flex;flex-direction:column;gap:9px;padding:12px;border:1px solid var(--line-soft);border-radius:12px;background:var(--surface-2)}
+.crmrow.due{border-color:var(--bad)}
+.crmrow .top{display:flex;align-items:center;gap:9px}
+.crmrow .top .nm{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0}
+.crmrow .top .nm b{display:block;font-size:14px;font-weight:620;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crmrow .top .nm span{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crmrow .badge{font-size:10.5px;font-weight:660;padding:3px 8px;border-radius:999px;color:#fff;flex:none;white-space:nowrap}
+.crmrow .f{margin:0}
+.crmrow .f input,.crmrow .f textarea{background:var(--surface)}
+.crmrow .acts{display:flex;gap:6px}
+.crmrow .acts button{flex:1;font-size:12.5px;font-weight:620;padding:8px 9px;border:1px solid var(--line);border-radius:8px;color:var(--ink-2);background:var(--surface);white-space:nowrap}
+.crmrow .acts button.on{background:var(--good);color:#fff;border-color:var(--good)}
+
 /* ---------- import ---------- */
 .help{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 12px}
 .help code{font-family:var(--mono);font-size:12px;background:var(--sunk);padding:1px 5px;border-radius:4px;color:var(--ink-2)}
@@ -378,6 +414,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <h1 class="brand">DM <em>Aura</em></h1>
       <span class="spacer"></span>
       <button class="iconbtn" id="btnStats" title="Your numbers" aria-label="Your numbers"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
+      <button class="iconbtn" id="btnCRM" title="CRM — notes &amp; follow-ups" aria-label="CRM — notes and follow-ups"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8.5 15l2 2 4-4"/></svg></button>
       <button class="iconbtn" id="btnTpl" title="Message templates" aria-label="Message templates"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>
       <button class="iconbtn" id="btnSettings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
@@ -508,6 +545,18 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <svg viewBox="0 0 24 24"><path d="M21.4 2.6a1 1 0 0 0-1.1-.2l-18 8a1 1 0 0 0 .1 1.9l7.3 2.1 2.1 7.3a1 1 0 0 0 1.9.1l8-18a1 1 0 0 0-.3-1.2z"/></svg>
       <span id="fSendLabel">Open DM</span>
     </a>
+  </div>
+</section>
+
+<!-- ============ CRM (separate from sending) ============ -->
+<section class="crm" id="crm" role="dialog" aria-modal="true" aria-label="CRM" hidden>
+  <div class="crmbar">
+    <button class="iconbtn" id="crmClose" aria-label="Close CRM"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2>CRM</h2>
+  </div>
+  <div class="crmwrap">
+    <p class="help">Notes, follow-ups and responses for leads you've already contacted — nothing here sends a DM.</p>
+    <div id="crmBody"></div>
   </div>
 </section>
 
@@ -648,7 +697,7 @@ function mkLead(o){
   const l = Object.assign({
     id:uid(), xid:"", handle:"", name:"", bio:"", avatar:"", website:"", location:"",
     followers:0, following:0, tweets:0, verified:false,
-    status:"queued", tags:[], listName:"", note:"", draft:"", tplId:null,
+    status:"queued", tags:[], listName:"", note:"", followUp:null, draft:"", tplId:null,
     dms:[], created:Date.now(), updated:0
   }, o||{});
   l.handle = String(l.handle||"").replace(/^@/,"").trim();
@@ -659,6 +708,7 @@ function mkLead(o){
   l.tags = Array.isArray(l.tags) ? l.tags : String(l.tags||"").split(/[,;|]/).map(s=>s.trim()).filter(Boolean);
   l.dms = (l.dms||[]).map(d => Object.assign({id:uid()}, d));
   l.updated = +l.updated || Date.now();
+  l.followUp = l.followUp ? String(l.followUp).slice(0,10) : null;
   if(!STATUS[l.status]) l.status = "queued";
   return l;
 }
@@ -679,7 +729,7 @@ function leadToRow(l, uidc){
     id:l.id, user_id:uidc, xid:l.xid, handle:l.handle, name:l.name, bio:l.bio,
     avatar:l.avatar, website:l.website, location:l.location,
     followers:l.followers, following:l.following, tweets:l.tweets, verified:!!l.verified,
-    status:l.status, tags:l.tags, list_name:l.listName, note:l.note, draft:l.draft,
+    status:l.status, tags:l.tags, list_name:l.listName, note:l.note, follow_up:l.followUp || null, draft:l.draft,
     tpl_id:l.tplId || null, dms:l.dms, created_at:new Date(l.created).toISOString(),
     updated_at:new Date(l.updated).toISOString()
   };
@@ -689,7 +739,7 @@ function rowToLead(r){
     id:r.id, xid:r.xid, handle:r.handle, name:r.name, bio:r.bio, avatar:r.avatar,
     website:r.website, location:r.location, followers:r.followers, following:r.following,
     tweets:r.tweets, verified:r.verified, status:r.status, tags:r.tags||[], listName:r.list_name,
-    note:r.note, draft:r.draft, tplId:r.tpl_id, dms:r.dms||[],
+    note:r.note, followUp:r.follow_up, draft:r.draft, tplId:r.tpl_id, dms:r.dms||[],
     created:new Date(r.created_at).getTime(), updated:new Date(r.updated_at).getTime()
   });
 }
@@ -1282,7 +1332,8 @@ const FILTERS = [
 let state = {
   filter:"queue", q:"", leadId:null, tab:"msg",
   selecting:false, sel:new Set(),
-  focusIds:[], focusAt:0
+  focusIds:[], focusAt:0,
+  crmMonth: today().slice(0,7), crmDay: null
 };
 
 function visible(){
@@ -1488,7 +1539,11 @@ function renderInfo(l){
     f("website","Website", l.website) +
     f("tags","Tags", l.tags.join(", "), "text", "Comma separated.") +
     f("listName","List", l.listName) +
-    `<div class="f"><label for="if_note">Note</label><textarea id="if_note" data-k="note">${esc(l.note)}</textarea></div>`;
+    f("followUp","Follow-up date", l.followUp, "date", "Shows up on the CRM calendar — see the CRM icon in the top bar.") +
+    `<div class="f"><label for="if_note">Note</label><textarea id="if_note" data-k="note">${esc(l.note)}</textarea></div>` +
+    (l.status !== "queued"
+      ? `<button type="button" class="btn" id="btnRequeue" style="width:100%">↺ Add back to campaign (mark unsent)</button>`
+      : "");
 }
 function renderLog(l){
   if(!l.dms.length){
@@ -1528,7 +1583,7 @@ $("#mClose").addEventListener("click", closeSheet);
 $("#btnCloseSheet").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
-  if(focusOn) closeFocus(); else closeSheet();
+  if(focusOn) closeFocus(); else if(crmOn) closeCRM(); else closeSheet();
 });
 
 function modal(title, bodyHTML, footHTML){
@@ -1617,6 +1672,7 @@ $("#ogrid").addEventListener("click", e => {
   const l = leadById(state.leadId); if(!l) return;
   l.status = b.getAttribute("data-st"); touch(l); save();
   $$("#ogrid .o").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  renderInfo(l);
   renderAll();
 });
 $("#infoFields").addEventListener("input", e => {
@@ -1628,9 +1684,18 @@ $("#infoFields").addEventListener("input", e => {
   else if(k === "tags") v = v.split(/[,;|]/).map(s=>s.trim()).filter(Boolean);
   else if(k === "handle") v = String(v).replace(/^@/,"").trim();
   else if(k === "xid") v = String(v).replace(/\D/g,"");
+  else if(k === "followUp") v = v || null;
   l[k] = v; touch(l); save();
   if(k === "xid"){ $("#shWarn").innerHTML = setupWarnHTML(l) + (canPrefill(l) ? "" : idWarnHTML()); syncSendLink(); }
   renderStats();
+});
+$("#infoFields").addEventListener("click", e => {
+  const b = e.target.closest("#btnRequeue"); if(!b) return;
+  const l = leadById(state.leadId); if(!l) return;
+  l.status = "queued"; l.followUp = null; l.draft = "";
+  touch(l); save();
+  renderSheet(); renderAll();
+  toast("Back in the queue, unsent");
 });
 $("#logBody").addEventListener("click", e => {
   const k = e.target.closest("[data-killdm]"); if(!k) return;
@@ -2090,6 +2155,148 @@ function editTemplate(id){
   });
 }
 $("#btnTpl").addEventListener("click", openTemplates);
+
+/* ============================== CRM ==============================
+   A separate full-screen view from sending/focus — nothing in here opens
+   X or logs a DM. Follow-up date + note live on the lead itself (also
+   editable from the regular sheet's Info tab); "responded" is just the
+   existing "replied" status, so it can't drift out of sync with the
+   funnel or reply-rate stats kept elsewhere.
+==================================================================== */
+let crmOn = false;
+function monthLabel(ym){
+  const [y,m] = ym.split("-").map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString(undefined,{month:"long",year:"numeric"});
+}
+function shiftMonth(ym, delta){
+  const [y,m] = ym.split("-").map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+}
+function followUpsOn(day){ return db.leads.filter(l => l.followUp === day); }
+function needsFollowUp(l){ return !!l.followUp && !["replied","booked","no"].includes(l.status); }
+function isDueDay(day){ return day <= today() && followUpsOn(day).some(needsFollowUp); }
+function crmLeads(){
+  // Anything the CRM cares about: already contacted, or carrying a note/follow-up.
+  return db.leads.filter(l => l.dms.length || l.followUp || l.note.trim());
+}
+function calendarHTML(ym){
+  const [y,m] = ym.split("-").map(Number);
+  const first = new Date(y, m-1, 1);
+  const startPad = (first.getDay()+6)%7;   // Monday-first, matches the heatmap elsewhere
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const dow = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+  const cells = [];
+  for(let i=0;i<startPad;i++) cells.push(`<div class="calday out"></div>`);
+  for(let d=1; d<=daysInMonth; d++){
+    const key = y + "-" + String(m).padStart(2,"0") + "-" + String(d).padStart(2,"0");
+    const n = followUpsOn(key).length;
+    const cls = ["calday"];
+    if(key === today()) cls.push("today");
+    if(isDueDay(key)) cls.push("due");
+    if(state.crmDay === key) cls.push("sel");
+    cells.push(`<button type="button" class="${cls.join(" ")}" data-day="${key}" aria-pressed="${state.crmDay===key}">${d}${n?'<span class="dot"></span>':""}</button>`);
+  }
+  return `
+    <div class="calhead">
+      <button type="button" id="calPrev" aria-label="Previous month"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <b>${esc(monthLabel(ym))}</b>
+      <button type="button" id="calNext" aria-label="Next month"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="calgrid">${dow.map(x=>`<div class="caldow">${x}</div>`).join("")}${cells.join("")}</div>`;
+}
+function crmRowHTML(l){
+  const st = STATUS[l.status];
+  const due = needsFollowUp(l) && l.followUp <= today();
+  const respBtn = l.status === "booked" ? "" :
+    `<button type="button" class="${l.status==='replied'?'on':''}" data-responded>${l.status==='replied' ? "✓ Responded" : "Mark responded"}</button>`;
+  return `<div class="crmrow ${due?"due":""}" data-lead="${l.id}">
+    <div class="top">
+      ${avatarHTML(l)}
+      <button type="button" class="nm" data-openlead="${l.id}">
+        <b>${esc(l.name || l.handle || "Unknown")}</b>
+        <span>${l.handle ? "@"+esc(l.handle) : "no handle"}</span>
+      </button>
+      <span class="badge" style="background:${st.color}">${esc(st.label)}</span>
+    </div>
+    <div class="f"><label>Follow-up date</label><input type="date" data-k="followUp" value="${l.followUp||""}" /></div>
+    <div class="f"><label>Note</label><textarea data-k="note" rows="2" placeholder="Notes on this lead…">${esc(l.note)}</textarea></div>
+    <div class="acts">${respBtn}<button type="button" data-requeue>↺ Re-add, unsent</button></div>
+  </div>`;
+}
+function crmListHTML(){
+  let leads = crmLeads();
+  if(state.crmDay) leads = leads.filter(l => l.followUp === state.crmDay);
+  leads = leads.slice().sort((a,b) => {
+    const da = needsFollowUp(a) ? a.followUp : "9999-99-99";
+    const dbb = needsFollowUp(b) ? b.followUp : "9999-99-99";
+    if(da !== dbb) return da < dbb ? -1 : 1;
+    return b.updated - a.updated;
+  });
+  if(!leads.length){
+    return `<p class="help" style="margin:6px 0">${state.crmDay ? "No follow-ups on " + esc(fmtDay(state.crmDay)) + "." : "No contacted leads yet — sent DMs, notes and follow-ups will show up here."}</p>`;
+  }
+  return `<div class="rows">${leads.map(crmRowHTML).join("")}</div>`;
+}
+function renderCRM(){
+  $("#crmBody").innerHTML = `
+    ${calendarHTML(state.crmMonth)}
+    <div class="section">${state.crmDay ? "Follow-ups on " + esc(fmtDay(state.crmDay)) : "Contacted leads"}</div>
+    ${state.crmDay ? `<button type="button" class="re" id="crmClearDay" style="color:var(--send);text-decoration:underline;text-underline-offset:3px;font-size:12.5px;margin:-4px 0 10px;display:block">Clear date filter</button>` : ""}
+    ${crmListHTML()}
+  `;
+}
+function openCRM(){
+  crmOn = true;
+  const el = $("#crm");
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add("on"));
+  document.body.style.overflow = "hidden";
+  renderCRM();
+}
+function closeCRM(){
+  crmOn = false;
+  const el = $("#crm");
+  el.classList.remove("on");
+  document.body.style.overflow = "";
+  setTimeout(() => { if(!crmOn) el.hidden = true; }, 280);
+}
+$("#btnCRM").addEventListener("click", openCRM);
+$("#crmClose").addEventListener("click", closeCRM);
+$("#crmBody").addEventListener("click", e => {
+  const day = e.target.closest("[data-day]");
+  if(day){ const k = day.getAttribute("data-day"); state.crmDay = state.crmDay===k ? null : k; renderCRM(); return; }
+  if(e.target.closest("#calPrev")){ state.crmMonth = shiftMonth(state.crmMonth, -1); renderCRM(); return; }
+  if(e.target.closest("#calNext")){ state.crmMonth = shiftMonth(state.crmMonth, 1); renderCRM(); return; }
+  if(e.target.closest("#crmClearDay")){ state.crmDay = null; renderCRM(); return; }
+  const openL = e.target.closest("[data-openlead]");
+  if(openL){ const id = openL.getAttribute("data-openlead"); closeCRM(); setTimeout(() => openLead(id), 260); return; }
+  const row = e.target.closest("[data-lead]"); if(!row) return;
+  const l = leadById(row.getAttribute("data-lead")); if(!l) return;
+  if(e.target.closest("[data-responded]")){
+    l.status = l.status === "replied" ? (l.dms.length ? "sent" : "queued") : "replied";
+    touch(l); save(); renderCRM(); renderAll();
+    return;
+  }
+  if(e.target.closest("[data-requeue]")){
+    l.status = "queued"; l.followUp = null; l.draft = "";
+    touch(l); save(); renderCRM(); renderAll();
+    toast((l.name || l.handle || "Lead") + " back in the queue, unsent");
+  }
+});
+$("#crmBody").addEventListener("input", e => {
+  const el = e.target.closest("[data-k]"); if(!el || el.getAttribute("data-k") !== "note") return;
+  const row = e.target.closest("[data-lead]"); if(!row) return;
+  const l = leadById(row.getAttribute("data-lead")); if(!l) return;
+  l.note = el.value; touch(l); save();
+});
+$("#crmBody").addEventListener("change", e => {
+  const el = e.target.closest("[data-k]"); if(!el || el.getAttribute("data-k") !== "followUp") return;
+  const row = e.target.closest("[data-lead]"); if(!row) return;
+  const l = leadById(row.getAttribute("data-lead")); if(!l) return;
+  l.followUp = el.value || null; touch(l); save();
+  renderCRM();
+});
 
 /* ============================== the numbers ============================== */
 function openStats(){

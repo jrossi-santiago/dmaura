@@ -153,6 +153,24 @@ Replies are marked by hand — X has no API that would tell the app. Set a lead 
 *Replied* or *Booked* from the status row in their sheet, or select several and
 set them in bulk.
 
+## CRM
+
+A separate full-screen view, deliberately apart from sending: nothing in it
+opens X or logs a DM. It's for managing leads *after* the first message —
+tap the calendar icon in the top bar (next to Stats).
+
+- **Calendar** — a month grid of every lead's follow-up date. A day with a
+  pending follow-up that's due today or overdue turns red; tap a day to
+  filter the list below to just that day's leads, tap again to clear it.
+- **Follow-up date & note**, per lead — set from the CRM list or from a
+  lead's *Info* tab in the regular sheet. The date is what puts them on the
+  calendar; there's no separate "responded" flag — marking a lead
+  **Replied** (in the CRM list or the status row) *is* the responded state,
+  so it can't drift out of sync with the funnel or the reply-rate stats.
+- **Re-add to campaign** — puts a contacted lead back to *Queued* and
+  clears its follow-up date and draft, so it shows up in the sending queue
+  again as if it were never messaged. The DM history itself is untouched.
+
 ## Where the data lives
 
 `localStorage` on that device is always the write-through cache — the app
@@ -224,6 +242,7 @@ create table if not exists leads (
   tags       text[] default '{}',
   list_name  text default '',
   note       text default '',
+  follow_up  date,                     -- CRM screen: user-set reminder date, shown on its calendar
   draft      text default '',
   tpl_id     uuid,
   dms        jsonb not null default '[]'::jsonb,   -- the send log, embedded per lead
@@ -234,6 +253,10 @@ create table if not exists leads (
 create unique index if not exists leads_user_xid    on leads (user_id, xid)    where xid <> '';
 create unique index if not exists leads_user_handle on leads (user_id, lower(handle)) where handle <> '';
 create index if not exists leads_user_status on leads (user_id, status);
+
+-- Older leads tables predate follow_up; this adds it without touching
+-- anything else if the column is already there.
+alter table leads add column if not exists follow_up date;
 
 -- One row per deleted lead/template so a delete on one device reaches every
 -- other signed-in device instead of getting silently re-created by whichever
