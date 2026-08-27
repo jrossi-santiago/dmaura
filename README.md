@@ -155,9 +155,10 @@ set them in bulk.
 
 ## CRM
 
-A separate full-screen view, deliberately apart from sending: nothing in it
-opens X or logs a DM. It's for managing leads *after* the first message —
-tap the calendar icon in the top bar (next to Stats).
+A separate mode from sending: nothing in it opens X or logs a DM. It's for
+managing leads *after* the first message — the **Sending / CRM** switch at
+the top of the app swaps the whole screen between the two, so it's never
+ambiguous which one you're looking at.
 
 - **Calendar** — a month grid of every lead's follow-up date. A day with a
   pending follow-up that's due today or overdue turns red; tap a day to

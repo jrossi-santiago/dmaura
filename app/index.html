@@ -266,14 +266,13 @@ textarea.msg{width:100%;min-height:170px;border:1px solid var(--line);border-rad
 .pace{text-align:center;font-size:11.5px;color:var(--muted);padding:0 16px 8px;font-family:var(--mono)}
 .pace.warn{color:var(--warn);font-weight:640}
 
-/* ---------- CRM (separate full screen from sending/focus) ---------- */
-.crm{position:fixed;inset:0;z-index:58;background:var(--ground);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,0,1)}
-.crm.on{transform:translateY(0)}
-@media (prefers-reduced-motion:reduce){.crm{transition:none}}
-.crmbar{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid var(--line-soft);flex:none}
-.crmbar h2{margin:0;font-size:17px;font-weight:680;flex:1;letter-spacing:-.01em}
-.crmwrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:760px;margin:0 auto;width:100%;padding:14px 16px calc(24px + env(safe-area-inset-bottom))}
+/* ---------- mode switch: Sending vs CRM ---------- */
+.modeswitch{display:flex;gap:4px;background:var(--sunk);border:1px solid var(--line-soft);border-radius:12px;padding:3px;margin-bottom:10px}
+.modeswitch button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;border-radius:9px;font-size:13.5px;font-weight:660;color:var(--muted)}
+.modeswitch button svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.modeswitch button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 
+/* ---------- CRM ---------- */
 .calhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .calhead b{flex:1;font-size:15px;font-weight:660;text-align:center}
 .calhead button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-2);flex:none}
@@ -414,45 +413,64 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <h1 class="brand">DM <em>Aura</em></h1>
       <span class="spacer"></span>
       <button class="iconbtn" id="btnStats" title="Your numbers" aria-label="Your numbers"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
-      <button class="iconbtn" id="btnCRM" title="CRM — notes &amp; follow-ups" aria-label="CRM — notes and follow-ups"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8.5 15l2 2 4-4"/></svg></button>
       <button class="iconbtn" id="btnTpl" title="Message templates" aria-label="Message templates"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>
       <button class="iconbtn" id="btnSettings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
     </div>
 
-    <div class="stats">
-      <button class="stat today" id="tToday"><b class="mono" id="sToday">0</b><span>Today</span></button>
-      <button class="stat streak" id="tStreak"><b class="mono" id="sStreak">0</b><span>Streak</span></button>
-      <button class="stat" id="tQueue"><b class="mono" id="sQueue">0</b><span>Queued</span></button>
-      <button class="stat rep" id="tRep"><b class="mono" id="sRep">0</b><span>Replies</span></button>
-    </div>
-    <div class="goalbar" id="goalBar" title="Daily goal"><i style="width:0"></i></div>
-
-    <div class="searchwrap">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="Search name, @handle, bio, tag" autocomplete="off" />
+    <div class="modeswitch" id="modeSwitch" role="tablist">
+      <button type="button" role="tab" data-mode="send" aria-pressed="true">
+        <svg viewBox="0 0 24 24"><path d="M21.4 2.6a1 1 0 0 0-1.1-.2l-18 8a1 1 0 0 0 .1 1.9l7.3 2.1 2.1 7.3a1 1 0 0 0 1.9.1l8-18a1 1 0 0 0-.3-1.2z"/></svg>
+        Sending
+      </button>
+      <button type="button" role="tab" data-mode="crm" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8.5 15l2 2 4-4"/></svg>
+        CRM
+      </button>
     </div>
 
-    <div class="chips" id="filters"></div>
+    <div id="sendChrome">
+      <div class="stats">
+        <button class="stat today" id="tToday"><b class="mono" id="sToday">0</b><span>Today</span></button>
+        <button class="stat streak" id="tStreak"><b class="mono" id="sStreak">0</b><span>Streak</span></button>
+        <button class="stat" id="tQueue"><b class="mono" id="sQueue">0</b><span>Queued</span></button>
+        <button class="stat rep" id="tRep"><b class="mono" id="sRep">0</b><span>Replies</span></button>
+      </div>
+      <div class="goalbar" id="goalBar" title="Daily goal"><i style="width:0"></i></div>
+
+      <div class="searchwrap">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Search name, @handle, bio, tag" autocomplete="off" />
+      </div>
+
+      <div class="chips" id="filters"></div>
+    </div>
   </header>
 
-  <div class="toolbar">
-    <button class="tool go" id="btnStart"><svg viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z" fill="currentColor" stroke="none"/><path d="M19 4v16"/></svg> Start sending</button>
-    <button class="tool" id="btnImport"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg> Import</button>
-    <button class="tool" id="btnAdd"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add</button>
-    <button class="tool" id="btnSelect" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Select</button>
-    <button class="tool" id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 20V8"/><path d="M8 12l4-4 4 4"/><path d="M4 4h16"/></svg> Export</button>
+  <div id="sendView">
+    <div class="toolbar">
+      <button class="tool go" id="btnStart"><svg viewBox="0 0 24 24"><path d="M5 4l10 8-10 8z" fill="currentColor" stroke="none"/><path d="M19 4v16"/></svg> Start sending</button>
+      <button class="tool" id="btnImport"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg> Import</button>
+      <button class="tool" id="btnAdd"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add</button>
+      <button class="tool" id="btnSelect" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Select</button>
+      <button class="tool" id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 20V8"/><path d="M8 12l4-4 4 4"/><path d="M4 4h16"/></svg> Export</button>
+    </div>
+
+    <div class="selbar hide" id="selbar">
+      <b id="selN">0</b> selected
+      <span class="spacer"></span>
+      <select id="selStatus"><option value="">Set status…</option></select>
+      <button id="selTag">Tag</button>
+      <button id="selAll">All</button>
+      <button class="danger" id="selDel">Delete</button>
+    </div>
+
+    <main class="list" id="list"></main>
   </div>
 
-  <div class="selbar hide" id="selbar">
-    <b id="selN">0</b> selected
-    <span class="spacer"></span>
-    <select id="selStatus"><option value="">Set status…</option></select>
-    <button id="selTag">Tag</button>
-    <button id="selAll">All</button>
-    <button class="danger" id="selDel">Delete</button>
+  <div id="crmView" class="hide">
+    <p class="help" style="padding:0 14px">Notes, follow-ups and responses for leads you've already contacted — nothing here sends a DM.</p>
+    <div id="crmBody" style="padding:0 14px 24px"></div>
   </div>
-
-  <main class="list" id="list"></main>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -545,18 +563,6 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <svg viewBox="0 0 24 24"><path d="M21.4 2.6a1 1 0 0 0-1.1-.2l-18 8a1 1 0 0 0 .1 1.9l7.3 2.1 2.1 7.3a1 1 0 0 0 1.9.1l8-18a1 1 0 0 0-.3-1.2z"/></svg>
       <span id="fSendLabel">Open DM</span>
     </a>
-  </div>
-</section>
-
-<!-- ============ CRM (separate from sending) ============ -->
-<section class="crm" id="crm" role="dialog" aria-modal="true" aria-label="CRM" hidden>
-  <div class="crmbar">
-    <button class="iconbtn" id="crmClose" aria-label="Close CRM"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2>CRM</h2>
-  </div>
-  <div class="crmwrap">
-    <p class="help">Notes, follow-ups and responses for leads you've already contacted — nothing here sends a DM.</p>
-    <div id="crmBody"></div>
   </div>
 </section>
 
@@ -1333,7 +1339,7 @@ let state = {
   filter:"queue", q:"", leadId:null, tab:"msg",
   selecting:false, sel:new Set(),
   focusIds:[], focusAt:0,
-  crmMonth: today().slice(0,7), crmDay: null
+  mode:"send", crmMonth: today().slice(0,7), crmDay: null
 };
 
 function visible(){
@@ -1365,10 +1371,14 @@ function visible(){
 
 function renderFilters(){
   const wrap = $("#filters");
-  wrap.innerHTML = FILTERS.map(f => {
-    const n = db.leads.filter(f.fn).length;
-    return `<button class="chip" data-f="${f.id}" aria-pressed="${state.filter===f.id}">${esc(f.label)}<span class="n">${n}</span></button>`;
-  }).join("");
+  // Empty categories (Needs ID, Follow up, Replied, Booked…) are just noise
+  // until they have something in them — Queue, All and whatever's active
+  // stay put as anchors.
+  wrap.innerHTML = FILTERS
+    .map(f => ({f, n: db.leads.filter(f.fn).length}))
+    .filter(({f,n}) => n > 0 || f.id === "queue" || f.id === "all" || f.id === state.filter)
+    .map(({f,n}) => `<button class="chip" data-f="${f.id}" aria-pressed="${state.filter===f.id}">${esc(f.label)}<span class="n">${n}</span></button>`)
+    .join("");
 }
 
 function leadHTML(l){
@@ -1583,7 +1593,7 @@ $("#mClose").addEventListener("click", closeSheet);
 $("#btnCloseSheet").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
-  if(focusOn) closeFocus(); else if(crmOn) closeCRM(); else closeSheet();
+  if(focusOn) closeFocus(); else closeSheet();
 });
 
 function modal(title, bodyHTML, footHTML){
@@ -2157,13 +2167,22 @@ function editTemplate(id){
 $("#btnTpl").addEventListener("click", openTemplates);
 
 /* ============================== CRM ==============================
-   A separate full-screen view from sending/focus — nothing in here opens
-   X or logs a DM. Follow-up date + note live on the lead itself (also
-   editable from the regular sheet's Info tab); "responded" is just the
-   existing "replied" status, so it can't drift out of sync with the
-   funnel or reply-rate stats kept elsewhere.
+   A separate mode from sending — toggled by the Sending/CRM switch at
+   the top, not stacked on top of it. Nothing in here opens X or logs a
+   DM. Follow-up date + note live on the lead itself (also editable from
+   the regular sheet's Info tab); "responded" is just the existing
+   "replied" status, so it can't drift out of sync with the funnel or
+   reply-rate stats kept elsewhere.
 ==================================================================== */
-let crmOn = false;
+function setMode(mode){
+  state.mode = mode;
+  $$("#modeSwitch button").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-mode")===mode)));
+  $("#sendChrome").classList.toggle("hide", mode !== "send");
+  $("#sendView").classList.toggle("hide", mode !== "send");
+  $("#crmView").classList.toggle("hide", mode !== "crm");
+  if(mode === "crm") renderCRM();
+}
+$$("#modeSwitch button").forEach(b => b.addEventListener("click", () => setMode(b.getAttribute("data-mode"))));
 function monthLabel(ym){
   const [y,m] = ym.split("-").map(Number);
   return new Date(y, m-1, 1).toLocaleDateString(undefined,{month:"long",year:"numeric"});
@@ -2246,23 +2265,6 @@ function renderCRM(){
     ${crmListHTML()}
   `;
 }
-function openCRM(){
-  crmOn = true;
-  const el = $("#crm");
-  el.hidden = false;
-  requestAnimationFrame(() => el.classList.add("on"));
-  document.body.style.overflow = "hidden";
-  renderCRM();
-}
-function closeCRM(){
-  crmOn = false;
-  const el = $("#crm");
-  el.classList.remove("on");
-  document.body.style.overflow = "";
-  setTimeout(() => { if(!crmOn) el.hidden = true; }, 280);
-}
-$("#btnCRM").addEventListener("click", openCRM);
-$("#crmClose").addEventListener("click", closeCRM);
 $("#crmBody").addEventListener("click", e => {
   const day = e.target.closest("[data-day]");
   if(day){ const k = day.getAttribute("data-day"); state.crmDay = state.crmDay===k ? null : k; renderCRM(); return; }
@@ -2270,7 +2272,7 @@ $("#crmBody").addEventListener("click", e => {
   if(e.target.closest("#calNext")){ state.crmMonth = shiftMonth(state.crmMonth, 1); renderCRM(); return; }
   if(e.target.closest("#crmClearDay")){ state.crmDay = null; renderCRM(); return; }
   const openL = e.target.closest("[data-openlead]");
-  if(openL){ const id = openL.getAttribute("data-openlead"); closeCRM(); setTimeout(() => openLead(id), 260); return; }
+  if(openL){ openLead(openL.getAttribute("data-openlead")); return; }
   const row = e.target.closest("[data-lead]"); if(!row) return;
   const l = leadById(row.getAttribute("data-lead")); if(!l) return;
   if(e.target.closest("[data-responded]")){
