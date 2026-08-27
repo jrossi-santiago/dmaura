@@ -155,36 +155,58 @@ set them in bulk.
 
 ## Where the data lives
 
-`localStorage`, in the browser, on that device. Nothing is uploaded anywhere.
+`localStorage` on that device is always the write-through cache — the app
+works with no network, on a train, offline entirely.
 
-That also means: clearing site data wipes it. **Settings → Backup → Download**
-writes a JSON file with everything, and *Restore* reads it back. Export also
-writes a CSV of whatever the current filter shows.
+With no Supabase project configured (the default), that's the whole story:
+single device, nothing uploaded, exactly the original behavior. **Settings →
+Backup → Download** writes a JSON file with everything, and *Restore* reads
+it back. Export also writes a CSV of whatever the current filter shows.
+
+With a Supabase project configured (below), the app also gates itself behind
+email/password sign-in and every `save()` pushes to Postgres, keyed by
+`auth.uid()`. Row Level Security means every user only ever sees their own
+rows — strangers can sign up, upload their own CSV, and never see anyone
+else's leads.
 
 ---
 
-## Next: Supabase (multi-user)
+## Multi-user setup (Supabase)
 
-The store is already shaped for it. Every record carries `updated`, every
-deletion leaves a tombstone in `deleted` / `deletedDms`, and all writes funnel
-through `save()` — so sync is last-write-wins against these tables, and
-`save()` is the single place to call an upsert from.
+### 1. Create the project
+
+1. [supabase.com](https://supabase.com) → New project. Pick any name/region,
+   save the database password somewhere (you won't need it again for this).
+   Takes ~2 minutes to provision.
+2. Project → **Authentication → Providers → Email** → turn **Confirm email**
+   **off**. This is the "no reconfirm" step — without it, Supabase makes new
+   users click a link in their inbox before they get a session, which is the
+   right call for production and annoying for testing right now.
+3. Project → **Settings → API** → copy the **Project URL** and the **anon
+   public** key. (Not the `service_role` key — that one bypasses RLS and must
+   never go in client-side code.)
+
+### 2. Run the SQL
+
+Project → **SQL Editor → New query**, paste this in, click **Run**. It's
+idempotent (`if not exists` everywhere) so re-running it is harmless.
 
 ```sql
-create table profiles (
-  id          uuid primary key references auth.users on delete cascade,
-  me          text default '',
-  company     text default '',
-  pitch       text default '',
-  question    text default '',
-  daily_goal  int  default 20,
-  daily_cap   int  default 60,
-  pace_seconds int default 0,
-  settings    jsonb default '{}'::jsonb,
-  updated_at  timestamptz default now()
+create table if not exists profiles (
+  id         uuid primary key references auth.users on delete cascade,
+  settings   jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
 );
 
-create table leads (
+create table if not exists templates (
+  id         uuid primary key,
+  user_id    uuid not null references auth.users on delete cascade,
+  name       text not null default '',
+  body       text not null default '',
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists leads (
   id         uuid primary key,
   user_id    uuid not null references auth.users on delete cascade,
   xid        text default '',          -- numeric X account id
@@ -204,47 +226,78 @@ create table leads (
   note       text default '',
   draft      text default '',
   tpl_id     uuid,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  dms        jsonb not null default '[]'::jsonb,   -- the send log, embedded per lead
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 -- Dedupe on the same keys the client merges on.
-create unique index leads_user_xid    on leads (user_id, xid)    where xid <> '';
-create unique index leads_user_handle on leads (user_id, lower(handle)) where handle <> '';
-create index leads_user_status on leads (user_id, status);
-
-create table dms (
-  id       uuid primary key,
-  lead_id  uuid not null references leads on delete cascade,
-  user_id  uuid not null references auth.users on delete cascade,
-  sent_at  timestamptz not null default now(),
-  text     text default '',
-  tpl_id   uuid,
-  via      text default 'link'         -- 'prefill' | 'manual'
-);
-create index dms_user_sent on dms (user_id, sent_at desc);
-
-create table templates (
-  id         uuid primary key,
-  user_id    uuid not null references auth.users on delete cascade,
-  name       text not null,
-  body       text not null,
-  updated_at timestamptz default now()
-);
+create unique index if not exists leads_user_xid    on leads (user_id, xid)    where xid <> '';
+create unique index if not exists leads_user_handle on leads (user_id, lower(handle)) where handle <> '';
+create index if not exists leads_user_status on leads (user_id, status);
 
 -- Every table is per-user; one policy shape covers all of them.
 alter table profiles  enable row level security;
-alter table leads     enable row level security;
-alter table dms       enable row level security;
 alter table templates enable row level security;
+alter table leads     enable row level security;
 
+drop policy if exists own_profiles  on profiles;
+drop policy if exists own_templates on templates;
+drop policy if exists own_leads     on leads;
 create policy own_profiles  on profiles  for all using (auth.uid() = id)      with check (auth.uid() = id);
-create policy own_leads     on leads     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy own_dms       on dms       for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy own_templates on templates for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy own_leads     on leads     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 
-To wire it up: add the supabase-js bundle and a `config.js` holding the project
-URL and anon key, gate the app behind Google OAuth, key the cache on the user id
-(`KEY_PREFIX + user.id`, already a one-line change in `cacheKey()`), and push
-from `save()` / pull on boot. Keeping `localStorage` as the write-through cache
-is what makes the app still work on a train.
+(This is a simpler shape than an earlier draft of this section: DMs live as
+a `jsonb` column on `leads` instead of their own table, matching how the
+client already nests them under each lead — one row per lead to upsert,
+instead of keeping a second table in sync.)
+
+### 3. Point the app at it
+
+Edit `app/config.js`:
+
+```js
+window.DMAURA_CONFIG = {
+  SUPABASE_URL: "https://xxxxxxxx.supabase.co",
+  SUPABASE_ANON_KEY: "eyJ..."
+};
+```
+
+That's the only file that needs your project's details. Leave both blank and
+the app stays in local-only mode with no login screen at all.
+
+### 4. Run it
+
+```bash
+python3 -m http.server 8000
+# http://localhost:8000/app/
+```
+
+Open it, hit **Create account** with any email/password (6+ chars) — since
+email confirmation is off, that logs you straight in, no inbox check. Anyone
+else who does the same gets their own empty sheet; RLS keeps every user's
+leads, templates, and settings walled off from everyone else's at the
+database level, not just in the UI.
+
+Existing local (pre-login) data on a device is **not** auto-migrated into a
+new cloud account — sign in first on a fresh browser/profile, or use
+**Settings → Backup → Restore** to bring an old JSON export into the
+now-signed-in account.
+
+### How the sync works
+
+- `save()` (already the single write path for every mutation) also debounces
+  a push to Postgres ~900ms later — a full upsert of `leads` + `templates` +
+  the `profiles` settings row for the signed-in user, plus deleting rows
+  whose ids are in the local tombstone list.
+- Sign-in pulls all three tables for that user and merges into the local
+  copy, last-write-wins by `updated_at` vs the local record's `updated`.
+- Offline or before the SQL above has been run, pushes/pulls just fail
+  silently and the app keeps working off `localStorage` — nothing blocks on
+  the network.
+- Known gap: if you delete a lead on device A, then device B (which never
+  re-pulls in between) can still have it locally — there's no cross-device
+  delete tombstone table. Fine for one person testing across a couple of
+  devices; would need a `deleted_leads` table with `deleted_at` for a real
+  multi-device guarantee.

@@ -333,9 +333,33 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 .toast .undo{pointer-events:auto;cursor:pointer;color:var(--send);margin-left:10px;text-decoration:underline;text-underline-offset:3px;padding:2px 4px}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .booting{position:fixed;inset:0;z-index:95;background:var(--ground);display:grid;place-items:center;color:var(--muted);font-size:14px;padding:24px;text-align:center}
+.auth{position:fixed;inset:0;z-index:96;background:var(--ground);display:grid;place-items:center;padding:24px}
+.authcard{width:100%;max-width:360px}
+.authcard h1{font-family:var(--serif);font-style:italic;font-weight:400;font-size:34px;margin:0 0 6px}
+.authcard .help{margin-bottom:18px}
+.autherr{font-size:13px;color:var(--bad);margin:-4px 0 12px;display:none}
+.autherr.on{display:block}
+.authcard .btn{display:block;width:100%;box-sizing:border-box}
+.authcard .btn+.btn{margin-top:8px}
+.authfoot{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;line-height:1.5}
 </style>
 </head>
 <body>
+
+<div class="auth" id="authScreen" hidden>
+  <div class="authcard">
+    <h1>DM <em>Aura</em></h1>
+    <p class="help">Sign in to keep your leads. Everything you upload is private to your account.</p>
+    <div class="fields" style="margin-bottom:12px">
+      <div class="f"><label for="auEmail">Email</label><input id="auEmail" type="email" autocomplete="email" placeholder="you@example.com" /></div>
+      <div class="f"><label for="auPass">Password</label><input id="auPass" type="password" autocomplete="current-password" placeholder="At least 6 characters" /></div>
+    </div>
+    <p class="autherr" id="authErr"></p>
+    <button class="btn primary" id="auSignIn">Sign in</button>
+    <button class="btn" id="auSignUp">Create account</button>
+    <p class="authfoot">First time here? Create account works the same as sign in —<br />it makes you an account if you don't have one yet.</p>
+  </div>
+</div>
 
 <div class="app">
   <header class="topbar">
@@ -492,6 +516,8 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="filePick" accept=".csv,.tsv,.txt,text/csv,text/plain" class="hide" />
 
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
 "use strict";
@@ -563,8 +589,20 @@ function blank(){
   };
 }
 
+/* ============================== cloud (supabase, optional) ==============================
+   Set app/config.js and every sign-in gates the app behind Supabase auth;
+   save() then also upserts to Postgres, keyed by auth.uid(). RLS means each
+   user only ever sees their own rows — see README for the SQL. With no
+   config, CLOUD_ON is false and the app runs exactly as it always did:
+   localStorage only, no login screen.
+==================================================================== */
+const CLOUD_CFG = window.DMAURA_CONFIG || {};
+const CLOUD_ON = !!(CLOUD_CFG.SUPABASE_URL && CLOUD_CFG.SUPABASE_ANON_KEY && window.supabase);
+const sb = CLOUD_ON ? window.supabase.createClient(CLOUD_CFG.SUPABASE_URL, CLOUD_CFG.SUPABASE_ANON_KEY) : null;
+let cloudUser = null;   // set once signed in; cacheKey() below keys local storage off it
+
 let db = blank();
-const cacheKey = () => KEY_PREFIX + "default";
+const cacheKey = () => KEY_PREFIX + (cloudUser ? cloudUser.id : "default");
 
 function load(){
   try{
@@ -592,6 +630,7 @@ function load(){
 function save(){
   try{ localStorage.setItem(cacheKey(), JSON.stringify(db)); }
   catch(e){ toast("Couldn't save — storage is full or blocked"); }
+  scheduleCloudPush();
 }
 function mkLead(o){
   const l = Object.assign({
@@ -612,6 +651,95 @@ function mkLead(o){
   return l;
 }
 function touch(l){ l.updated = Date.now(); return l; }
+
+/* ============================== cloud sync ==============================
+   Full-row upsert, last-write-wins on updated_at. Small dataset (hundreds
+   of leads, not millions) so this stays simple: no field-level diffing.
+==================================================================== */
+let pushTimer = null;
+function scheduleCloudPush(){
+  if(!CLOUD_ON || !cloudUser) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushToCloud, 900);
+}
+function leadToRow(l, uidc){
+  return {
+    id:l.id, user_id:uidc, xid:l.xid, handle:l.handle, name:l.name, bio:l.bio,
+    avatar:l.avatar, website:l.website, location:l.location,
+    followers:l.followers, following:l.following, tweets:l.tweets, verified:!!l.verified,
+    status:l.status, tags:l.tags, list_name:l.listName, note:l.note, draft:l.draft,
+    tpl_id:l.tplId || null, dms:l.dms, created_at:new Date(l.created).toISOString(),
+    updated_at:new Date(l.updated).toISOString()
+  };
+}
+function rowToLead(r){
+  return mkLead({
+    id:r.id, xid:r.xid, handle:r.handle, name:r.name, bio:r.bio, avatar:r.avatar,
+    website:r.website, location:r.location, followers:r.followers, following:r.following,
+    tweets:r.tweets, verified:r.verified, status:r.status, tags:r.tags||[], listName:r.list_name,
+    note:r.note, draft:r.draft, tplId:r.tpl_id, dms:r.dms||[],
+    created:new Date(r.created_at).getTime(), updated:new Date(r.updated_at).getTime()
+  });
+}
+async function pushToCloud(){
+  if(!CLOUD_ON || !cloudUser) return;
+  const uidc = cloudUser.id;
+  try{
+    if(db.leads.length) await sb.from("leads").upsert(db.leads.map(l => leadToRow(l, uidc)));
+    if(db.deleted.length){
+      await sb.from("leads").delete().in("id", db.deleted);
+      db.deleted = [];
+    }
+    if(db.templates.length){
+      await sb.from("templates").upsert(db.templates.map(t => ({
+        id:t.id, user_id:uidc, name:t.name, body:t.body,
+        updated_at:new Date(t.updated||Date.now()).toISOString()
+      })));
+    }
+    const { data:cloudTpls } = await sb.from("templates").select("id").eq("user_id", uidc);
+    const liveIds = new Set(db.templates.map(t => t.id));
+    const staleIds = (cloudTpls||[]).map(r => r.id).filter(id => !liveIds.has(id));
+    if(staleIds.length) await sb.from("templates").delete().in("id", staleIds);
+    await sb.from("profiles").upsert({
+      id:uidc, settings:db.settings, updated_at:new Date(db.settings.updated||Date.now()).toISOString()
+    });
+    localStorage.setItem(cacheKey(), JSON.stringify(db));   // db.deleted just changed
+  }catch(e){ /* offline, or the SQL below hasn't been run yet — local copy is still safe */ }
+}
+async function pullFromCloud(){
+  if(!CLOUD_ON || !cloudUser) return;
+  const uidc = cloudUser.id;
+  try{
+    const [leadsRes, tplRes, profRes] = await Promise.all([
+      sb.from("leads").select("*").eq("user_id", uidc),
+      sb.from("templates").select("*").eq("user_id", uidc),
+      sb.from("profiles").select("*").eq("id", uidc).maybeSingle()
+    ]);
+    if(leadsRes.error) throw leadsRes.error;
+
+    const byId = new Map(db.leads.map(l => [l.id, l]));
+    (leadsRes.data||[]).forEach(r => {
+      const local = byId.get(r.id);
+      const cloudUpdated = new Date(r.updated_at).getTime();
+      if(!local || cloudUpdated > local.updated) byId.set(r.id, rowToLead(r));
+    });
+    db.leads = Array.from(byId.values());
+
+    const tplById = new Map(db.templates.map(t => [t.id, t]));
+    (tplRes.data||[]).forEach(r => {
+      const local = tplById.get(r.id);
+      const cloudUpdated = new Date(r.updated_at).getTime();
+      if(!local || cloudUpdated > (local.updated||0))
+        tplById.set(r.id, { id:r.id, name:r.name, body:r.body, updated:cloudUpdated });
+    });
+    db.templates = Array.from(tplById.values());
+
+    const prof = profRes.data;
+    if(prof && (+new Date(prof.updated_at) > (db.settings.updated||0))){
+      db.settings = Object.assign(blank().settings, prof.settings||{}, {updated:+new Date(prof.updated_at)});
+    }
+  }catch(e){ /* offline, or the SQL below hasn't been run yet — carry on with what's local */ }
+}
 
 /* ============================== helpers ============================== */
 const $  = s => document.querySelector(s);
@@ -2096,6 +2224,12 @@ function openSettings(){
         <option value="dark" ${s.theme==="dark"?"selected":""}>Dark</option>
       </select></div>
 
+    ${CLOUD_ON ? `<div class="section">Account</div>
+    <div class="rows">
+      <div class="row"><div class="nm"><b>Signed in</b><span>${esc(cloudUser ? cloudUser.email : "")}</span></div>
+        <button class="mini" id="seSignOut">Sign out</button></div>
+    </div>` : ""}
+
     <div class="section">Data</div>
     <div class="rows">
       <div class="row"><div class="nm"><b>Backup</b><span>${db.leads.length} leads, ${counts().dms} DMs logged</span></div>
@@ -2104,7 +2238,7 @@ function openSettings(){
       <div class="row"><div class="nm"><b>Wipe everything</b><span>Clears this browser's copy for good</span></div>
         <button class="mini danger" id="seWipe">Wipe</button></div>
     </div>
-    <p class="help" style="margin-top:14px">Everything lives in this browser only. Nothing is uploaded anywhere.</p>
+    <p class="help" style="margin-top:14px">${CLOUD_ON ? "Synced to your account — signing in elsewhere pulls it back down." : "Everything lives in this browser only. Nothing is uploaded anywhere."}</p>
   `, `<button class="btn primary" id="seClose">Done</button>`);
 
   $("#seClose").addEventListener("click", closeSheet);
@@ -2122,10 +2256,28 @@ function openSettings(){
   });
   $("#seBackup").addEventListener("click", downloadBackup);
   $("#seRestore").addEventListener("click", restoreBackup);
-  $("#seWipe").addEventListener("click", () => {
-    if(!confirm("Delete every lead, template and send record on this device?")) return;
+  if(CLOUD_ON && cloudUser){
+    $("#seSignOut").addEventListener("click", async () => {
+      if(!confirm("Sign out? Your leads stay saved to your account.")) return;
+      closeSheet();
+      await sb.auth.signOut();
+    });
+  }
+  $("#seWipe").addEventListener("click", async () => {
+    const cloudNote = CLOUD_ON && cloudUser ? " This also clears your synced copy in the cloud." : "";
+    if(!confirm("Delete every lead, template and send record on this device?" + cloudNote)) return;
     localStorage.removeItem(cacheKey());
     db = blank(); save(); closeSheet(); renderAll();
+    if(CLOUD_ON && cloudUser){
+      try{
+        const uidc = cloudUser.id;
+        await Promise.all([
+          sb.from("leads").delete().eq("user_id", uidc),
+          sb.from("templates").delete().eq("user_id", uidc)
+        ]);
+        await sb.from("profiles").delete().eq("id", uidc);
+      }catch(e){}
+    }
     toast("Wiped");
   });
 }
@@ -2196,12 +2348,86 @@ function applyTheme(){
   else document.documentElement.setAttribute("data-theme", t);
 }
 
-db = load();
-if(!db.settings.tplId && db.templates.length) db.settings.tplId = db.templates[0].id;
-save();                       // so the store exists from the first visit on
-applyTheme();
-renderAll();
-$("#booting").hidden = true;
+function startApp(){
+  if(!db.settings.tplId && db.templates.length) db.settings.tplId = db.templates[0].id;
+  save();
+  applyTheme();
+  renderAll();
+  $("#booting").hidden = true;
+}
+
+function showAuth(){
+  $(".app").hidden = true;
+  $("#authScreen").hidden = false;
+  $("#booting").hidden = true;
+}
+function hideAuth(){ $("#authScreen").hidden = true; }
+
+async function enterApp(user){
+  cloudUser = user;
+  hideAuth();
+  $(".app").hidden = false;
+  db = load();                // now that cloudUser is set, this reads the user-scoped key
+  await pullFromCloud();
+  startApp();
+}
+
+/* ------------------------------ auth screen ------------------------------ */
+if(CLOUD_ON){
+  function authError(msg){
+    const el = $("#authErr");
+    el.textContent = msg || "";
+    el.classList.toggle("on", !!msg);
+  }
+  async function doAuth(mode){
+    const email = $("#auEmail").value.trim();
+    const pass = $("#auPass").value;
+    if(!email || !pass){ authError("Enter an email and a password."); return; }
+    if(pass.length < 6){ authError("Password needs at least 6 characters."); return; }
+    authError(null);
+    const btn = $(mode === "up" ? "#auSignUp" : "#auSignIn");
+    const other = $(mode === "up" ? "#auSignIn" : "#auSignUp");
+    const label = btn.textContent;
+    btn.disabled = true; other.disabled = true; btn.textContent = mode === "up" ? "Creating…" : "Signing in…";
+    try{
+      const { data, error } = mode === "up"
+        ? await sb.auth.signUp({ email, password: pass })
+        : await sb.auth.signInWithPassword({ email, password: pass });
+      if(error) throw error;
+      if(mode === "up" && !data.session){
+        authError("Account created — check your inbox to confirm, then sign in.");
+      }
+      // a real session triggers onAuthStateChange below, which calls enterApp
+    }catch(e){
+      authError(e.message || "Something went wrong.");
+    }finally{
+      btn.disabled = false; other.disabled = false; btn.textContent = label;
+    }
+  }
+  $("#auSignIn").addEventListener("click", () => doAuth("in"));
+  $("#auSignUp").addEventListener("click", () => doAuth("up"));
+  [$("#auEmail"), $("#auPass")].forEach(el => el.addEventListener("keydown", e => {
+    if(e.key === "Enter") doAuth("in");
+  }));
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if(session && session.user){
+      if(!cloudUser || cloudUser.id !== session.user.id) enterApp(session.user);
+    }else if(event === "SIGNED_OUT"){
+      cloudUser = null;
+      db = blank();
+      showAuth();
+    }
+  });
+
+  sb.auth.getSession().then(({ data }) => {
+    if(data.session && data.session.user) enterApp(data.session.user);
+    else showAuth();
+  }).catch(() => showAuth());
+}else{
+  db = load();
+  startApp();
+}
 
 // A day can roll over while the tab sits open; refresh the counters on return.
 document.addEventListener("visibilitychange", () => { if(!document.hidden) renderStats(); });
