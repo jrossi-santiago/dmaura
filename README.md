@@ -79,8 +79,8 @@ There is no equivalent link that works from a handle. So:
 | Only a handle or profile URL | Copies the message, opens the profile. Tap **Message**, paste, send. |
 
 Most scrapers (Apify, PhantomBuster, TweetScout, most Selenium exports) include
-the id — keep that column. The **One-tap** and **Needs ID** filters show you
-where you stand, and you can paste a missing id into any lead under *Info*.
+the id — keep that column. The **Needs ID** filter shows you which leads are
+missing one, and you can paste it into any lead under *Info*.
 
 ## Running it
 

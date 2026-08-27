@@ -266,6 +266,11 @@ textarea.msg{width:100%;min-height:170px;border:1px solid var(--line);border-rad
 .pace{text-align:center;font-size:11.5px;color:var(--muted);padding:0 16px 8px;font-family:var(--mono)}
 .pace.warn{color:var(--warn);font-weight:640}
 
+/* ---------- view heading (CRM's page title) ---------- */
+.viewhead{padding:4px 14px 2px}
+.viewhead h2{margin:0;font-size:19px;font-weight:680;letter-spacing:-.015em}
+.viewhead .help{margin-top:4px}
+
 /* ---------- mode switch: Sending vs CRM ---------- */
 .modeswitch{display:flex;gap:4px;background:var(--sunk);border:1px solid var(--line-soft);border-radius:12px;padding:3px;margin-bottom:10px}
 .modeswitch button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;border-radius:9px;font-size:13.5px;font-weight:660;color:var(--muted)}
@@ -468,7 +473,10 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
   </div>
 
   <div id="crmView" class="hide">
-    <p class="help" style="padding:0 14px">Notes, follow-ups and responses for leads you've already contacted — nothing here sends a DM.</p>
+    <div class="viewhead">
+      <h2>CRM</h2>
+      <p class="help">Notes, follow-ups and responses for leads you've already contacted — nothing here sends a DM.</p>
+    </div>
     <div id="crmBody" style="padding:0 14px 24px"></div>
   </div>
 </div>
@@ -1327,7 +1335,6 @@ function lastDmAt(l){ return l.dms.length ? l.dms[l.dms.length-1].at : 0; }
 
 const FILTERS = [
   {id:"queue",   label:"Queue",      fn:l => l.status === "queued"},
-  {id:"ready",   label:"One-tap",    fn:l => l.status === "queued" && canPrefill(l)},
   {id:"noid",    label:"Needs ID",   fn:l => !canPrefill(l)},
   {id:"sent",    label:"Sent",       fn:l => l.status === "sent"},
   {id:"followup",label:"Follow up",  fn:l => l.status === "sent" && daysSince(lastDmAt(l)) >= FOLLOWUP_DAYS},
@@ -2259,6 +2266,8 @@ function crmListHTML(){
 }
 function renderCRM(){
   $("#crmBody").innerHTML = `
+    <div class="section">Follow-up calendar</div>
+    <p class="help" style="margin-top:-4px">Tap a date to see who's due that day.</p>
     ${calendarHTML(state.crmMonth)}
     <div class="section">${state.crmDay ? "Follow-ups on " + esc(fmtDay(state.crmDay)) : "Contacted leads"}</div>
     ${state.crmDay ? `<button type="button" class="re" id="crmClearDay" style="color:var(--send);text-decoration:underline;text-underline-offset:3px;font-size:12.5px;margin:-4px 0 10px;display:block">Clear date filter</button>` : ""}
