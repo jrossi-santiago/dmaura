@@ -310,11 +310,12 @@ body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
   position:fixed; right:12px; bottom:12px; z-index:80;
   font-family:var(--mono);
 }
+.vh{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap}
 .switcher summary{
   list-style:none; cursor:pointer; user-select:none;
-  display:flex; align-items:center; gap:6px;
-  padding:7px 11px; background:var(--ink); color:var(--orange);
-  border-radius:999px; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  display:flex; align-items:center; gap:5px; width:fit-content;
+  padding:7px 10px; background:var(--ink); color:var(--orange);
+  border-radius:999px; font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
   box-shadow:0 10px 26px rgba(0,0,0,.4); border:1px solid rgba(255,247,236,.14);
 }
 .switcher summary::-webkit-details-marker{display:none}
@@ -558,10 +559,10 @@ h1.glitch .claim{ animation:glitch .6s steps(1) .95s 1 both }
 </main>
 </div>
 
-<details class="switcher" aria-label="Design directions">
-  <summary>Glitch Press · 2/4</summary>
+<details class="switcher" aria-label="Design directions: Glitch Press, 2 of 4">
+  <summary><span aria-hidden="true">2/4</span><span class="vh">Design directions, showing 2 of 4 — Glitch Press</span></summary>
   <div class="switcher-menu">
-    <b>Jump to direction</b>
+    <b>Glitch Press · Jump to direction</b>
     <a href="../">Main site</a>
     <a href="../one/">1</a>
     <a href="../two/" aria-current="page">2 — this page</a>
