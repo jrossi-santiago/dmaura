@@ -257,10 +257,21 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .steps-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1px; background:var(--cream-t-14);
   border:1px solid var(--cream-t-14); border-radius:var(--r); overflow:hidden}
 .step{background:var(--navy); padding:clamp(24px,3vw,32px)}
-.step .n{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; color:#7C93FF; display:block; margin-bottom:18px}
-.step svg{width:26px; height:26px; stroke:var(--cream-t); fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; margin-bottom:16px}
-.step h3{font-family:var(--sans); font-size:1.15rem; font-weight:700; margin:0 0 .5em; letter-spacing:-.01em}
+.step-head{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+.step .n{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; color:#7C93FF; flex:none}
+.step svg{width:22px; height:22px; stroke:var(--cream-t); fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; flex:none}
+.step h3{font-family:var(--sans); font-size:1.15rem; font-weight:700; margin:0; letter-spacing:-.01em}
 .step p{margin:0; color:var(--cream-t-65); font-size:.92rem; line-height:1.58}
+
+/* ── getting-ids guides ─────────────────────────────────────────── */
+.guides{padding:clamp(56px,9vh,96px) 0}
+.guide-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:var(--r); overflow:hidden}
+.guide{background:var(--cream-hi); padding:clamp(22px,3vw,28px)}
+.guide svg{width:22px; height:22px; stroke:var(--cobalt); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; margin-bottom:14px}
+.guide h3{font-family:var(--sans); font-size:1.02rem; font-weight:700; margin:0 0 .4em; letter-spacing:-.01em}
+.guide p{margin:0; color:var(--ink-70); font-size:.9rem; line-height:1.56}
+.guides .note{margin-top:22px; font-size:.86rem; color:var(--ink-55); text-align:center}
 
 /* ── feature rows ───────────────────────────────────────────────── */
 .feat-rows{display:flex; flex-direction:column; gap:clamp(56px,9vh,96px); padding:clamp(56px,9vh,96px) 0}
@@ -298,14 +309,6 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .tapmock .composer .btnrow{display:flex; justify-content:flex-end}
 .tapmock .composer .sendbtn{font-family:var(--mono); font-size:.65rem; letter-spacing:.1em; text-transform:uppercase; background:var(--ink); color:var(--cream); padding:8px 16px; border-radius:999px}
 
-/* ── honesty band ───────────────────────────────────────────────── */
-.honesty{padding:clamp(56px,9vh,88px) 0; text-align:center}
-.honesty .wrap{max-width:760px}
-.honesty h2{font-size:clamp(1.7rem,3.2vw,2.4rem)}
-.honesty p{color:var(--cream-t-65); font-size:1.02rem; line-height:1.7; margin:0 auto 1em; max-width:44rem}
-.honesty .sig{margin-top:20px; font-family:var(--mono); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--cream-t-65)}
-.honesty .sig i{font-family:var(--serif); font-style:italic; color:var(--cream-t); text-transform:none; letter-spacing:0; font-size:1.1em}
-
 /* ── compare table ──────────────────────────────────────────────── */
 .compare{padding:clamp(56px,9vh,96px) 0}
 .cmp{width:100%; border-collapse:collapse; font-size:.92rem}
@@ -316,6 +319,9 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .cmp td.dm::before{content:"✓ "; color:var(--green); font-weight:700}
 .cmp td.bot{color:var(--ink-55)}
 .cmp td.bot::before{content:"– "; color:var(--orange)}
+.cmp tr.highlight{background:var(--cobalt-tint)}
+.cmp tr.highlight th{box-shadow:inset 3px 0 0 var(--cobalt)}
+.cmp tr.highlight td.dm{font-size:1.04rem; font-weight:700}
 .cmp-wrap{overflow-x:auto; border:1px solid var(--rule); border-radius:var(--r)}
 .cmp-wrap .cmp{margin:0}
 .cmp-wrap th:first-child, .cmp-wrap td:first-child{padding-left:20px}
@@ -383,6 +389,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
     <span class="sp"></span>
     <div class="links" id="navLinks">
       <a href="#how">How it works</a>
+      <a href="#guides">Getting IDs</a>
       <a href="#product">Product</a>
       <a href="#compare">Compare</a>
       <a href="#pricing">Pricing</a>
@@ -425,11 +432,11 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <li class="f"><span class="dot" style="background:var(--green)"></span>You hit send</li>
           </ul>
           <p class="deck anim">
-            DM Aura takes the list you already scraped, matches each name to a
-            numeric X account id, and opens the DM thread with the message
-            <mark>already written</mark>. You read it, you tap send — a real tap,
-            from your own logged-in session, so there is <mark>nothing to
-            automate</mark> and nothing for X to flag.
+            Import the list you already have, and DM Aura writes the first
+            message for every person on it — <mark>ready to go</mark>. You
+            just look it over and tap send, for real, from your own account,
+            so there's <mark>nothing automated</mark> and nothing that gets
+            your account flagged.
           </p>
           <div class="cta-row anim">
             <a class="btn primary" href="../">Request early access
@@ -493,59 +500,104 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
     <div class="wrap">
       <p class="eyebrow">§ 01 — How it works</p>
       <h2>Three steps, <i>zero</i> automation</h2>
-      <p class="lede">Nothing here talks to the X API and nothing runs while
-        your laptop's closed. It's your list, your wording, your tap.</p>
+      <p class="lede">Nothing runs in the background and nothing sends on
+        its own — it's your list, your words, your tap.</p>
       <div class="steps-grid">
         <div class="step">
-          <span class="n">01</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
-          <h3>Import</h3>
-          <p>Drop a CSV or paste profile links straight in. Columns
-            auto-match by header, and re-importing merges instead of
-            duplicating — existing leads just get their gaps filled in.</p>
+          <div class="step-head">
+            <span class="n">01</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
+            <h3>Import</h3>
+          </div>
+          <p>Add your list — drop in a spreadsheet or paste in profile
+            links. Adding the same list again just fills in anything new,
+            it won't create duplicates.</p>
         </div>
         <div class="step">
-          <span class="n">02</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9l-5.2 1.1L12 15l-1.8-4.9L5 9l5.2-1.1L12 3Z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>
-          <h3>Personalize</h3>
-          <p>Tokens like <code>{first}</code> and <code>{topic}</code> pull
-            from each lead's bio; spintax such as <code>{Hey|Hi|Yo}</code>
-            rotates the wording so no two messages read identical.</p>
+          <div class="step-head">
+            <span class="n">02</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9l-5.2 1.1L12 15l-1.8-4.9L5 9l5.2-1.1L12 3Z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>
+            <h3>Personalize</h3>
+          </div>
+          <p>We write a first draft for every person on your list, using
+            their name and what they post about — and we vary the wording
+            each time so no two messages sound copy-pasted.</p>
         </div>
         <div class="step">
-          <span class="n">03</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/><path d="M21.3 2.9 10.9 13.6"/></svg>
-          <h3>Send</h3>
-          <p>With a numeric account id, one tap opens the DM thread with the
-            text already typed. No id yet? It copies the message and opens
-            the profile — one paste, still fast.</p>
+          <div class="step-head">
+            <span class="n">03</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/><path d="M21.3 2.9 10.9 13.6"/></svg>
+            <h3>Send</h3>
+          </div>
+          <p>One tap opens the message right in their inbox, already typed
+            out. You just look it over and hit send — nothing goes out on
+            its own.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ════════ getting ids ════════ -->
+  <section class="band cream guides" id="guides">
+    <div class="wrap">
+      <p class="eyebrow">§ 02 — Getting IDs</p>
+      <h2>Don't have IDs yet? We'll <i>show</i> you how to get them</h2>
+      <p class="lede">Every plan includes these guides at no extra cost —
+        pick whichever way fits the list you're working with.</p>
+      <div class="guide-grid">
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <h3>Using a scraper</h3>
+          <p>Point a tool like Apify, PhantomBuster, or TweetScout at a
+            list of profiles and it hands you a spreadsheet with everything
+            you need — no coding involved. We walk you through it step by
+            step.</p>
+        </div>
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 4 2-2.5 3.5-4 5.5-4C21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z"/></svg>
+          <h3>From people you already know</h3>
+          <p>Already have followers or past DMs? We show you how to export
+            those lists — the IDs come along automatically.</p>
+        </div>
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
+          <h3>One profile at a time</h3>
+          <p>Only need a handful? A quick, two-minute manual method for
+            looking up a single profile — no tools required.</p>
+        </div>
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+          <h3>Already have a spreadsheet?</h3>
+          <p>Just drop it in. DM Aura finds the right columns automatically,
+            whatever they happen to be named.</p>
+        </div>
+      </div>
+      <p class="note">Included free with every plan — no separate purchase</p>
     </div>
   </section>
 
   <!-- ════════ product features ════════ -->
   <section class="band cream" id="product">
     <div class="wrap feat-rows">
-      <p class="eyebrow" style="margin-bottom:0">§ 02 — Product</p>
+      <p class="eyebrow" style="margin-bottom:0">§ 03 — Product</p>
 
       <div class="featrow">
         <div class="col-text">
-          <span class="k">One tap, not one bot</span>
-          <h3>The account sending the DM is <i style="font-family:var(--serif);color:var(--cobalt)">yours</i></h3>
-          <p>A numeric id opens <code>x.com/messages/compose</code> with the
-            recipient and text pre-filled. There's no headless browser, no
-            session you hand over, and no account you log the app into on
-            your behalf.</p>
+          <span class="k">You send it, not a bot</span>
+          <h3>The message goes out from <i style="font-family:var(--serif);color:var(--cobalt)">your</i> account</h3>
+          <p>One tap opens the message right inside their inbox on
+            Twitter/X, already written and ready to go — from your own,
+            already-logged-in account. Nothing logs in for you, and nothing
+            runs in the background.</p>
           <ul>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Opens the real DM composer, prefilled</li>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>No handle-only fallback: copies text, opens the profile</li>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg><strong>Needs ID</strong> filter shows exactly who's missing one</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Opens their inbox with the message already typed</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>No ID for someone yet? We copy the message and open their profile instead — one paste and you're sending</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>A simple filter shows you exactly who still needs that quick manual step</li>
           </ul>
         </div>
         <div class="col-vis">
           <div class="tapmock">
-            <div class="row1"><span class="av">MR</span><span class="id">recipient_id · 44196397</span></div>
+            <div class="row1"><span class="av">MR</span><span class="id">Ready to send</span></div>
             <div class="composer">
               <div class="line">Maya — your thread on running design systems solo is the clearest thing I've read on it…</div>
               <div class="btnrow"><span class="sendbtn">Message</span></div>
@@ -556,12 +608,12 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
 
       <div class="featrow rev">
         <div class="col-text">
-          <span class="k">Templates that don't repeat themselves</span>
-          <h3>Tokens for the facts, spintax for the wording</h3>
-          <p>Pull <code>{first}</code>, <code>{bio}</code>, <code>{topic}</code>,
-            <code>{followers}</code> and more straight from the lead. Wrap
-            alternatives in braces and the phrasing rotates on its own — so a
-            hundred sends don't read like a form letter.</p>
+          <span class="k">Personal, not copy-pasted</span>
+          <h3>One template, a hundred messages that don't sound the same</h3>
+          <p>Write a message once, and DM Aura fills in each person's name,
+            what they post about, and other details for you. You can also
+            give it a few ways to phrase a line, and it'll mix them up — so
+            a hundred sends don't read like a form letter.</p>
         </div>
         <div class="col-vis">
           <div class="tplmock">
@@ -572,15 +624,15 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
 
       <div class="featrow">
         <div class="col-text">
-          <span class="k">Metrics that keep you honest</span>
-          <h3>A goal ring, a streak, and a funnel you can trust</h3>
-          <p>Daily goal ring, a 30-day bar chart, an 18-week heatmap, and
-            per-template reply rates — so you can see which opener is
-            actually working instead of guessing.</p>
+          <span class="k">See what's actually working</span>
+          <h3>Know which messages get replies, not just guess</h3>
+          <p>See how many you've sent today, your streak, and which opening
+            lines actually get replies — so you know what's working instead
+            of guessing.</p>
           <ul>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Streak survives until a whole day passes empty</li>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Funnel: imported → DM'd → replied → booked</li>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Daily cap warns at 80%, then again at the limit</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Your streak only breaks if you skip an entire day</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Follow each lead from imported, to messaged, to replied, to booked</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>A warning before you get close to your daily sending limit</li>
           </ul>
         </div>
         <div class="col-vis" style="background:var(--navy); border-color:var(--navy)">
@@ -594,11 +646,11 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
 
       <div class="featrow rev">
         <div class="col-text">
-          <span class="k">A CRM for after they reply</span>
+          <span class="k">Once someone replies</span>
           <h3>Follow-ups live on a calendar, not a sticky note</h3>
-          <p>A separate <strong>Sending / CRM</strong> mode for once the
-            conversation's started: a month grid of follow-up dates, a note
-            per lead, and a one-tap way to put someone back in the queue.</p>
+          <p>Once the conversation starts, switch to a simple calendar
+            view: set a follow-up date, jot a note, and bring someone back
+            into your sending queue whenever you're ready.</p>
         </div>
         <div class="col-vis">
           <div class="calmock">
@@ -613,23 +665,6 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
     </div>
   </section>
 
-  <!-- ════════ honesty / no fake social proof ════════ -->
-  <section class="band navy honesty">
-    <div class="texture tr" aria-hidden="true"></div>
-    <div class="wrap">
-      <p class="eyebrow" style="justify-content:center">§ 03 — About that testimonials section</p>
-      <h2>No customer logos. <i>No five-star quotes.</i></h2>
-      <p>DM Aura is in early access. We could fill this space with a wall of
-        star ratings and logos of companies that never used the product —
-        plenty of landing pages do — but that's just fabricating endorsements
-        for a tool that isn't public yet.</p>
-      <p>The outbox above is the honest version: real markup, a real thread
-        shape, invented names, labelled <strong>Sample</strong>. When there
-        are sends worth quoting, they'll replace it.</p>
-      <p class="sig">Built by <i>DM Aura</i> · No. 002</p>
-    </div>
-  </section>
-
   <!-- ════════ compare ════════ -->
   <section class="band cream compare" id="compare">
     <div class="wrap">
@@ -640,14 +675,14 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
       <div class="cmp-wrap">
         <table class="cmp">
           <thead>
-            <tr><th></th><th>DM Aura</th><th>Automation bots &amp; API tools</th></tr>
+            <tr><th></th><th>DM Aura</th><th>Bots &amp; automation tools</th></tr>
           </thead>
           <tbody>
-            <tr><th>Who actually sends</th><td class="dm">You, one real tap at a time</td><td class="bot">A bot or headless session</td></tr>
-            <tr><th>Login you hand over</th><td class="dm">Never — it just opens X in your browser</td><td class="bot">Usually, or an API key with DM scope</td></tr>
-            <tr><th>Risk to your account</th><td class="dm">Same as any normal DM you send</td><td class="bot">Rate limits, suspensions, shadow-bans</td></tr>
-            <tr><th>Message variation</th><td class="dm">Tokens + spintax, edited before every send</td><td class="bot">Often identical copy at volume</td></tr>
-            <tr><th>What breaks if it's caught</th><td class="dm">Nothing — there's nothing to catch</td><td class="bot">The account, sometimes the budget behind it</td></tr>
+            <tr><th>Who actually sends</th><td class="dm">You, one real tap at a time</td><td class="bot">A bot, signed in as you</td></tr>
+            <tr><th>Your login</th><td class="dm">Never handed over — it just opens X in your browser</td><td class="bot">Usually required, or a special key with DM access</td></tr>
+            <tr class="highlight"><th>Risk to your account</th><td class="dm">None — it's the same as any DM you'd send yourself</td><td class="bot">Getting limited, flagged, or banned</td></tr>
+            <tr><th>Message variety</th><td class="dm">Personalized and reworded automatically</td><td class="bot">Often identical, word for word</td></tr>
+            <tr><th>What you lose if it goes wrong</th><td class="dm">Nothing — there's nothing to catch</td><td class="bot">Your account, sometimes money too</td></tr>
           </tbody>
         </table>
       </div>
@@ -668,9 +703,10 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
           <p class="price"><b>$9</b><span>/ month</span></p>
           <ul>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Unlimited leads, CSV or paste import</li>
-            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Templates with tokens &amp; spintax</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Messages that personalize &amp; reword themselves</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Streak, goals, heatmap, funnel</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>CRM mode, calendar &amp; follow-ups</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Step-by-step guides for finding IDs</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Cancel anytime</li>
           </ul>
           <a class="btn ghost" href="../">Request early access<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
@@ -683,6 +719,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Everything in Monthly</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Pay once, own it for good</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>All future updates included</li>
+            <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Step-by-step guides for finding IDs</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Multi-device sync when it ships</li>
           </ul>
           <a class="btn primary" href="../">Request early access<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
@@ -708,7 +745,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
         </details>
         <details>
           <summary>Where does my data live?<span class="plus" aria-hidden="true"></span></summary>
-          <p>In your browser's localStorage by default — nothing leaves your device. Turn on optional Supabase sync and it's also stored in Postgres behind row-level security, so only your signed-in account can ever read your rows.</p>
+          <p>Right in your browser by default — nothing leaves your device. Turn on optional account sync and it's also backed up securely in the cloud, visible only to you, so it follows you to your other devices.</p>
         </details>
         <details>
           <summary>Can I use it on my phone?<span class="plus" aria-hidden="true"></span></summary>
