@@ -83,6 +83,11 @@ ul{margin:0;padding:0;list-style:none}
 .band.cream{background:var(--cream); color:var(--ink)}
 .band.navy{background:var(--navy); color:var(--cream-t)}
 .band.ink{background:var(--ink); color:var(--cream-t)}
+.band.blue{background:var(--cobalt); color:#fff}
+.band.blue .eyebrow{color:rgba(255,255,255,.75)}
+.band.blue .eyebrow::after{background:rgba(255,255,255,.25)}
+.band.blue h2 i{color:var(--orange)}
+.band.blue .lede{color:rgba(255,255,255,.82)}
 
 /* halftone dot cluster texture, reused from the waitlist page */
 .texture{
@@ -196,7 +201,7 @@ h2 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
   stroke-dasharray:1; stroke-dashoffset:1; animation:draw 1.6s var(--ease) .3s forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
 h1{position:relative; z-index:1; font-family:var(--sans); font-weight:700;
-  font-size:clamp(2.5rem,5.6vw,4.3rem); line-height:.99; letter-spacing:-.022em; margin:0}
+  font-size:clamp(2.5rem,5.6vw,4.3rem); line-height:.99; letter-spacing:-.022em; margin:0; padding-bottom:.14em}
 h1 span{display:block}
 h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--cobalt); letter-spacing:0}
 .feats{position:relative; z-index:1; margin:clamp(20px,3vh,28px) 0 0; padding:11px 0;
@@ -269,9 +274,10 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
   border:1px solid var(--rule); border-radius:var(--r); overflow:hidden}
 .guide{background:var(--cream-hi); padding:clamp(22px,3vw,28px)}
 .guide svg{width:22px; height:22px; stroke:var(--cobalt); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; margin-bottom:14px}
-.guide h3{font-family:var(--sans); font-size:1.02rem; font-weight:700; margin:0 0 .4em; letter-spacing:-.01em}
+.guide h3{font-family:var(--sans); font-size:1.02rem; font-weight:700; margin:0 0 .4em; letter-spacing:-.01em; color:var(--ink)}
 .guide p{margin:0; color:var(--ink-70); font-size:.9rem; line-height:1.56}
 .guides .note{margin-top:22px; font-size:.86rem; color:var(--ink-55); text-align:center}
+.band.blue .guides .note{color:rgba(255,255,255,.75)}
 
 /* ── feature rows ───────────────────────────────────────────────── */
 .feat-rows{display:flex; flex-direction:column; gap:clamp(56px,9vh,96px); padding:clamp(56px,9vh,96px) 0}
@@ -389,8 +395,8 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
     <span class="sp"></span>
     <div class="links" id="navLinks">
       <a href="#how">How it works</a>
-      <a href="#guides">Getting IDs</a>
       <a href="#product">Product</a>
+      <a href="#guides">Getting IDs</a>
       <a href="#compare">Compare</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
@@ -537,49 +543,10 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
     </div>
   </section>
 
-  <!-- ════════ getting ids ════════ -->
-  <section class="band cream guides" id="guides">
-    <div class="wrap">
-      <p class="eyebrow">§ 02 — Getting IDs</p>
-      <h2>Don't have IDs yet? We'll <i>show</i> you how to get them</h2>
-      <p class="lede">Every plan includes these guides at no extra cost —
-        pick whichever way fits the list you're working with.</p>
-      <div class="guide-grid">
-        <div class="guide">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-          <h3>Using a scraper</h3>
-          <p>Point a tool like Apify, PhantomBuster, or TweetScout at a
-            list of profiles and it hands you a spreadsheet with everything
-            you need — no coding involved. We walk you through it step by
-            step.</p>
-        </div>
-        <div class="guide">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 4 2-2.5 3.5-4 5.5-4C21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z"/></svg>
-          <h3>From people you already know</h3>
-          <p>Already have followers or past DMs? We show you how to export
-            those lists — the IDs come along automatically.</p>
-        </div>
-        <div class="guide">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
-          <h3>One profile at a time</h3>
-          <p>Only need a handful? A quick, two-minute manual method for
-            looking up a single profile — no tools required.</p>
-        </div>
-        <div class="guide">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-          <h3>Already have a spreadsheet?</h3>
-          <p>Just drop it in. DM Aura finds the right columns automatically,
-            whatever they happen to be named.</p>
-        </div>
-      </div>
-      <p class="note">Included free with every plan — no separate purchase</p>
-    </div>
-  </section>
-
   <!-- ════════ product features ════════ -->
   <section class="band cream" id="product">
     <div class="wrap feat-rows">
-      <p class="eyebrow" style="margin-bottom:0">§ 03 — Product</p>
+      <p class="eyebrow" style="margin-bottom:0">§ 02 — Product</p>
 
       <div class="featrow">
         <div class="col-text">
@@ -662,6 +629,45 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ════════ getting ids ════════ -->
+  <section class="band blue guides" id="guides">
+    <div class="wrap">
+      <p class="eyebrow">§ 03 — Getting IDs</p>
+      <h2>Don't have IDs yet? We'll <i>show</i> you how to get them</h2>
+      <p class="lede">Every plan includes these guides at no extra cost —
+        pick whichever way fits the list you're working with.</p>
+      <div class="guide-grid">
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <h3>Using a scraper</h3>
+          <p>Point a tool like Apify, PhantomBuster, or TweetScout at a
+            list of profiles and it hands you a spreadsheet with everything
+            you need — no coding involved. We walk you through it step by
+            step.</p>
+        </div>
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 4 2-2.5 3.5-4 5.5-4C21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z"/></svg>
+          <h3>From people you already know</h3>
+          <p>Already have followers or past DMs? We show you how to export
+            those lists — the IDs come along automatically.</p>
+        </div>
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
+          <h3>One profile at a time</h3>
+          <p>Only need a handful? A quick, two-minute manual method for
+            looking up a single profile — no tools required.</p>
+        </div>
+        <div class="guide">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+          <h3>Already have a spreadsheet?</h3>
+          <p>Just drop it in. DM Aura finds the right columns automatically,
+            whatever they happen to be named.</p>
+        </div>
+      </div>
+      <p class="note">Included free with every plan — no separate purchase</p>
     </div>
   </section>
 
