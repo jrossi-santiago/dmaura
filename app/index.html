@@ -26,7 +26,7 @@ if(!location.pathname.endsWith("/")){
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
 
 <style>
 :root{
@@ -40,7 +40,7 @@ if(!location.pathname.endsWith("/")){
   --r:14px; --r-sm:10px;
   --ui:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
   --serif:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --mono:var(--ui);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
