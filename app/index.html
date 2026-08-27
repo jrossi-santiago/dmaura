@@ -886,11 +886,18 @@ const GUESS = [
   [/(location|city|country|region|place)/i, "location"],
   [/(website|expanded_?url|^site$|homepage|^link_?url$)/i, "website"],
   [/(verified|is_?blue|blue_?verified)/i, "verified"],
-  [/(tags?|labels?|list|segment|category|niche)/i, "tags"],
+  [/(tags?|labels?|\blist\b|segment|category|niche)/i, "tags"],
   [/(notes?|comment|remark)/i, "note"]
 ];
 function guessField(header, used){
   const h = String(header||"").trim();
+  // Follower/following scrapers (Apify's "Twitter Followers Scraper" and
+  // kin) prefix a second set of columns — sourceHandle, sourceUserId,
+  // sourceUrl — with the account whose list was scraped, not the lead
+  // sitting in this row. Left unskipped, "sourceHandle" would win the
+  // handle mapping ahead of the real "username" column and every row
+  // would import with the same account's handle.
+  if(/^source/i.test(h)) return "";
   for(const [re, k] of GUESS){
     if(re.test(h) && !used.has(k)) return k;
   }
