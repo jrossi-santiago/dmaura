@@ -6,6 +6,7 @@ A waitlist site and the tool behind it.
 index.html            the early-access page — waitlist capture, posts to Formspree
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
+  admin/index.html    trial activation dashboard (see "Admin" section below)
   sw.js               service worker, cache-first shell (bump CACHE on deploy)
   manifest.webmanifest, icon.svg, icon-*.png   paper-plane mark on cobalt
   sample-leads.csv    example import, including rows with no numeric id
@@ -295,6 +296,90 @@ If you ran the SQL from an earlier version of this README (no `tombstones`
 table), just run the block above again — every statement is `if not exists`
 or `drop ... ; create ...`, so it adds what's missing without touching your
 existing rows.
+
+### 2b. Admin: trial activation dashboard
+
+`app/admin/` is a separate one-page dashboard (not part of the main app) that
+shows, per signed-up user: signup date, last login, whether they've imported
+a list, DM count, and whether they hit **20 DMs within 48 hours of signup**
+(the activation bar — see `app/admin/index.html` to change the threshold).
+
+It reads through one Postgres function instead of querying `leads`/`auth.users`
+directly, because RLS normally walls every user off from every other user's
+rows — this function is the one deliberate exception, aggregating across all
+users. Run this once in the SQL Editor, after the block above:
+
+```sql
+create or replace function admin_trial_activation()
+returns table (
+  user_id          uuid,
+  email            text,
+  signed_up_at     timestamptz,
+  last_login_at    timestamptz,
+  first_import_at  timestamptz,
+  first_dm_at      timestamptz,
+  dm_count         bigint,
+  dms_in_48h       bigint,
+  activated        boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with dm_events as (
+    select l.user_id, (dm->>'at')::bigint as at_ms
+    from leads l, jsonb_array_elements(l.dms) as dm
+    where jsonb_typeof(l.dms) = 'array' and dm ? 'at'
+  ),
+  per_user_dm as (
+    select user_id, count(*) as dm_count, min(to_timestamp(at_ms / 1000.0)) as first_dm_at
+    from dm_events
+    group by user_id
+  ),
+  first_import as (
+    select user_id, min(created_at) as first_import_at
+    from leads
+    group by user_id
+  ),
+  signup as (
+    select id as user_id, email, created_at as signed_up_at, last_sign_in_at as last_login_at
+    from auth.users
+  ),
+  dms_48h as (
+    select d.user_id, count(*) as dms_in_48h
+    from dm_events d
+    join signup s on s.user_id = d.user_id
+    where to_timestamp(d.at_ms / 1000.0) <= s.signed_up_at + interval '48 hours'
+    group by d.user_id
+  )
+  select
+    s.user_id, s.email, s.signed_up_at, s.last_login_at,
+    fi.first_import_at, pd.first_dm_at,
+    coalesce(pd.dm_count, 0) as dm_count,
+    coalesce(d48.dms_in_48h, 0) as dms_in_48h,
+    coalesce(d48.dms_in_48h, 0) >= 20 as activated
+  from signup s
+  left join first_import fi on fi.user_id = s.user_id
+  left join per_user_dm pd on pd.user_id = s.user_id
+  left join dms_48h d48 on d48.user_id = s.user_id
+  order by s.signed_up_at desc;
+$$;
+
+grant execute on function admin_trial_activation() to anon, authenticated;
+```
+
+`security definer` means the function runs with the privileges of the user
+who created it (you, the project owner), bypassing RLS on purpose — that's
+what lets one query see every user's row. It only returns the aggregated
+columns above, never raw leads, drafts, or message content.
+
+**No password on `app/admin/` yet.** Anyone with the URL — or anyone who
+calls this function directly with the project's anon key — can read every
+trial user's email and activation status. Fine while the tool is unreleased
+and pre-launch; before real signups arrive, gate the page (e.g. check
+`auth.getUser()` against your own email, or `revoke execute ... from anon`
+and require a signed-in admin session) and consider dropping `email` from
+the returned columns if the dashboard doesn't need it.
 
 ### 3. Point the app at it
 
