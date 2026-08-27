@@ -425,15 +425,25 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 <div class="auth" id="authScreen" hidden>
   <div class="authcard">
     <h1>DM <em>Aura</em></h1>
-    <p class="help">Sign in to keep your leads. Everything you upload is private to your account.</p>
+    <p class="help" id="authHelp">Create your account to keep your leads. Everything you upload is private to your account.</p>
+
+    <div class="modeswitch" id="authModeSwitch" role="tablist">
+      <button type="button" role="tab" data-authmode="up" aria-pressed="true">Sign up</button>
+      <button type="button" role="tab" data-authmode="in" aria-pressed="false">Sign in</button>
+    </div>
+
     <div class="fields" style="margin-bottom:12px">
+      <div class="two" id="auNameRow">
+        <div class="f"><label for="auFirst">First name</label><input id="auFirst" type="text" autocomplete="given-name" placeholder="Alex" /></div>
+        <div class="f"><label for="auLast">Last name</label><input id="auLast" type="text" autocomplete="family-name" placeholder="Rivera" /></div>
+      </div>
+      <div class="f" id="auCompanyRow"><label for="auCompany">Company <span style="text-transform:none;letter-spacing:0">(optional)</span></label><input id="auCompany" type="text" autocomplete="organization" placeholder="Acme Inc." /></div>
       <div class="f"><label for="auEmail">Email</label><input id="auEmail" type="email" autocomplete="email" placeholder="you@example.com" /></div>
-      <div class="f"><label for="auPass">Password</label><input id="auPass" type="password" autocomplete="current-password" placeholder="At least 6 characters" /></div>
+      <div class="f"><label for="auPass">Password</label><input id="auPass" type="password" autocomplete="new-password" placeholder="At least 6 characters" /></div>
+      <div class="f" id="auPass2Row"><label for="auPass2">Repeat password</label><input id="auPass2" type="password" autocomplete="new-password" placeholder="Retype your password" /></div>
     </div>
     <p class="autherr" id="authErr"></p>
-    <button class="btn primary" id="auSignIn">Sign in</button>
-    <button class="btn" id="auSignUp">Create account</button>
-    <p class="authfoot">First time here? Create account works the same as sign in —<br />it makes you an account if you don't have one yet.</p>
+    <button class="btn primary" id="authSubmit">Create account</button>
   </div>
 </div>
 
@@ -2808,6 +2818,7 @@ function showAuth(){
   $("#onboardScreen").hidden = true;
   $("#authScreen").hidden = false;
   $("#booting").hidden = true;
+  if(typeof setAuthMode === "function") setAuthMode("up");
 }
 function hideAuth(){ $("#authScreen").hidden = true; }
 
@@ -2978,7 +2989,14 @@ async function enterApp(user){
   hidePaywall();
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();
-  if(!db.settings.onboarded){ showOnboarding(); return; }
+  if(!db.settings.onboarded){
+    const meta = user.user_metadata || {};
+    if(!db.settings.me && (meta.first_name || meta.last_name)) db.settings.me = [meta.first_name, meta.last_name].filter(Boolean).join(" ");
+    if(!db.settings.company && meta.company) db.settings.company = meta.company;
+    save();
+    showOnboarding();
+    return;
+  }
   revealApp();
 }
 function revealApp(){
@@ -3014,19 +3032,46 @@ if(CLOUD_ON){
     el.textContent = msg || "";
     el.classList.toggle("on", !!msg);
   }
-  async function doAuth(mode){
+  let authMode = "up";
+  function setAuthMode(mode){
+    authMode = mode;
+    $$("#authModeSwitch button").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-authmode") === mode)));
+    $("#auNameRow").hidden = mode !== "up";
+    $("#auCompanyRow").hidden = mode !== "up";
+    $("#auPass2Row").hidden = mode !== "up";
+    $("#auPass").setAttribute("autocomplete", mode === "up" ? "new-password" : "current-password");
+    $("#authHelp").textContent = mode === "up"
+      ? "Create your account to keep your leads. Everything you upload is private to your account."
+      : "Sign in to keep your leads. Everything you upload is private to your account.";
+    $("#authSubmit").textContent = mode === "up" ? "Create account" : "Sign in";
+    authError(null);
+  }
+  $$("#authModeSwitch button").forEach(b => b.addEventListener("click", () => setAuthMode(b.getAttribute("data-authmode"))));
+
+  async function doAuth(){
+    const mode = authMode;
     const email = $("#auEmail").value.trim();
     const pass = $("#auPass").value;
     if(!email || !pass){ authError("Enter an email and a password."); return; }
     if(pass.length < 6){ authError("Password needs at least 6 characters."); return; }
+
+    let first = "", last = "", company = "";
+    if(mode === "up"){
+      first = $("#auFirst").value.trim();
+      last = $("#auLast").value.trim();
+      company = $("#auCompany").value.trim();
+      const pass2 = $("#auPass2").value;
+      if(!first || !last){ authError("Enter your first and last name."); return; }
+      if(pass !== pass2){ authError("Passwords don't match."); return; }
+    }
+
     authError(null);
-    const btn = $(mode === "up" ? "#auSignUp" : "#auSignIn");
-    const other = $(mode === "up" ? "#auSignIn" : "#auSignUp");
+    const btn = $("#authSubmit");
     const label = btn.textContent;
-    btn.disabled = true; other.disabled = true; btn.textContent = mode === "up" ? "Creating…" : "Signing in…";
+    btn.disabled = true; btn.textContent = mode === "up" ? "Creating…" : "Signing in…";
     try{
       const { data, error } = mode === "up"
-        ? await sb.auth.signUp({ email, password: pass })
+        ? await sb.auth.signUp({ email, password: pass, options: { data: { first_name: first, last_name: last, company } } })
         : await sb.auth.signInWithPassword({ email, password: pass });
       if(error) throw error;
       if(mode === "up" && !data.session){
@@ -3036,14 +3081,14 @@ if(CLOUD_ON){
     }catch(e){
       authError(e.message || "Something went wrong.");
     }finally{
-      btn.disabled = false; other.disabled = false; btn.textContent = label;
+      btn.disabled = false; btn.textContent = label;
     }
   }
-  $("#auSignIn").addEventListener("click", () => doAuth("in"));
-  $("#auSignUp").addEventListener("click", () => doAuth("up"));
-  [$("#auEmail"), $("#auPass")].forEach(el => el.addEventListener("keydown", e => {
-    if(e.key === "Enter") doAuth("in");
+  $("#authSubmit").addEventListener("click", doAuth);
+  [$("#auFirst"), $("#auLast"), $("#auCompany"), $("#auEmail"), $("#auPass"), $("#auPass2")].forEach(el => el.addEventListener("keydown", e => {
+    if(e.key === "Enter") doAuth();
   }));
+  setAuthMode("up");
 
   $("#payMonthly").addEventListener("click", e => startCheckoutFromApp("monthly", e.currentTarget));
   $("#payLifetime").addEventListener("click", e => startCheckoutFromApp("lifetime", e.currentTarget));
