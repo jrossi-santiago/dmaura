@@ -9,6 +9,16 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="description" content="A DM outreach sheet for X. Import a list, tap once, send." />
 <meta name="theme-color" content="#2C4CDB" />
+<script>
+// Everything below is loaded with relative paths so this folder runs from any
+// prefix (see README) — but that only resolves correctly if the URL ends in
+// "/". A host that serves this file for e.g. "/app" without redirecting to
+// "/app/" would otherwise send config.js, sw.js, and the icons to the wrong
+// (parent) directory. Fix the URL before any relative request goes out.
+if(!location.pathname.endsWith("/")){
+  location.replace(location.pathname + "/" + location.search + location.hash);
+}
+</script>
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icon-180.png" />
