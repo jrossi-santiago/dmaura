@@ -8,41 +8,47 @@
 <meta name="apple-mobile-web-app-title" content="DM Aura" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="description" content="A DM outreach sheet for X. Import a list, tap once, send." />
-<meta name="theme-color" content="#D8460F" />
+<meta name="theme-color" content="#2C4CDB" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="icon-180.png" />
 <title>DM Aura — DM sheet for X</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+
 <style>
 :root{
-  --ground:#EFE9DC; --surface:#FBF7EF; --surface-2:#F4EEE2; --sunk:#E4DCCB;
-  --line:#DCD1BD; --line-soft:#E9E2D4;
-  --ink:#141210; --ink-2:#4C463D; --muted:#6E6558;
-  --send:#D8460F; --send-press:#B93A0B; --on-send:#FFF9F2;
-  --good:#0F7382; --warn:#A35A1F; --bad:#B03A2E; --slate:#6B6055; --violet:#7A4A9E;
+  --ground:#F1ECE0; --surface:#F8F4EA; --surface-2:#EDE7D8; --sunk:#E6DFCF;
+  --line:#D9CFB8; --line-soft:#E7DFCE;
+  --ink:#15130F; --ink-2:#4C463D; --muted:#6E6558;
+  --send:#2C4CDB; --send-press:#2440B8; --on-send:#F8F4EA;
+  --good:#2E9E76; --warn:#E8531F; --bad:#B03A2E; --slate:#6B6055; --violet:#A83D6E;
   --shadow:0 1px 2px rgba(20,18,16,.05), 0 8px 24px rgba(20,18,16,.07);
   --sheet-shadow:0 -8px 40px rgba(20,18,16,.24);
   --r:14px; --r-sm:10px;
-  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",sans-serif;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --ui:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ground:#0C0B0A; --surface:#151311; --surface-2:#201C19; --sunk:#070605;
-    --line:#2E2823; --line-soft:#241F1B;
-    --ink:#F7F2E9; --ink-2:#B8AF9F; --muted:#8A8073;
-    --send:#FF6A38; --send-press:#E8551F; --on-send:#1A0B04;
-    --good:#A9DEE8; --warn:#E0A15E; --bad:#E08479; --slate:#9C9184; --violet:#C39BE8;
+    --ground:#14161D; --surface:#1B1E29; --surface-2:#20232F; --sunk:#0F1116;
+    --line:rgba(237,231,216,.14); --line-soft:rgba(237,231,216,.08);
+    --ink:#EDE7D8; --ink-2:#B7AF9C; --muted:#8B8371;
+    --send:#6E8CFF; --send-press:#5875E0; --on-send:#0D1330;
+    --good:#4CC79A; --warn:#F0784A; --bad:#E08479; --slate:#9C9184; --violet:#E8829F;
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.4);
     --sheet-shadow:0 -8px 44px rgba(0,0,0,.65);
   }
 }
 :root[data-theme="dark"]{
-  --ground:#0B0D11; --surface:#14171D; --surface-2:#1A1E25; --sunk:#07090C;
-  --line:#282D37; --line-soft:#20242B;
-  --ink:#E8EBF0; --ink-2:#A8B1BF; --muted:#77808D;
-  --send:#4F8DF7; --send-press:#3D7CEA; --on-send:#07142C;
-  --good:#3FBE8C; --warn:#D89257; --bad:#DC7676; --slate:#8B98A8; --violet:#9E8BEC;
+  --ground:#14161D; --surface:#1B1E29; --surface-2:#20232F; --sunk:#0F1116;
+  --line:rgba(237,231,216,.14); --line-soft:rgba(237,231,216,.08);
+  --ink:#EDE7D8; --ink-2:#B7AF9C; --muted:#8B8371;
+  --send:#6E8CFF; --send-press:#5875E0; --on-send:#0D1330;
+  --good:#4CC79A; --warn:#F0784A; --bad:#E08479; --slate:#9C9184; --violet:#E8829F;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
   --sheet-shadow:0 -8px 44px rgba(0,0,0,.6);
 }
@@ -73,6 +79,7 @@ a{color:var(--send)}
 .mark{width:27px;height:27px;border-radius:8px;background:var(--send);display:grid;place-items:center;flex:none}
 .mark svg{width:15px;height:15px;fill:none;stroke:var(--on-send);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .brand{font-size:16.5px;font-weight:680;letter-spacing:-.015em;margin:0;white-space:nowrap}
+.brand em{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--send)}
 @media (max-width:390px){ .brand{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)} }
 .brandrow .spacer{flex:1}
 .iconbtn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--ink-2);border:1px solid transparent;flex:none}
@@ -334,7 +341,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
   <header class="topbar">
     <div class="brandrow">
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/><path d="M21.3 2.9 10.9 13.6"/></svg></span>
-      <h1 class="brand">DM Aura</h1>
+      <h1 class="brand">DM <em>Aura</em></h1>
       <span class="spacer"></span>
       <button class="iconbtn" id="btnStats" title="Your numbers" aria-label="Your numbers"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></button>
       <button class="iconbtn" id="btnTpl" title="Message templates" aria-label="Message templates"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></button>
@@ -673,8 +680,9 @@ function copyText(s){
   return Promise.resolve();
 }
 
-// Warm-side hues only: blues and violets fought the vermilion ground.
-const AV_COLORS = ["#D8460F","#A35A1F","#0F7382","#7A4A9E","#B03A2E","#6B6055","#8A6D1F","#1C6E5A"];
+// Field Study accent family — cobalt/orange/green/pink plus a deeper tonal
+// variant of each, all checked against the white avatar-initial text.
+const AV_COLORS = ["#2C4CDB","#B8420C","#1F7A5C","#A83D6E","#1B3A9E","#9C5A1C","#0F6B52","#7A3660"];
 function avColor(seed){
   let h = 0; const s = String(seed||"?");
   for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
