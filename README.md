@@ -4,12 +4,10 @@ A waitlist site and the tool behind it.
 
 ```
 index.html            the early-access page — waitlist capture, posts to Formspree
-fonts/                self-hosted variable faces (Bodoni Moda, DM Mono)
-                      — the landing page only; the tool uses system faces
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
   sw.js               service worker, cache-first shell (bump CACHE on deploy)
-  manifest.webmanifest, icon.svg, icon-*.png   paper-plane mark on vermilion
+  manifest.webmanifest, icon.svg, icon-*.png   paper-plane mark on cobalt
   sample-leads.csv    example import, including rows with no numeric id
 ```
 
@@ -25,24 +23,25 @@ validation before submit, a busy button, server-side errors surfaced in the
 copy Formspree returns, and a success panel that echoes the address it captured.
 A hidden `_gotcha` field catches bots.
 
-Two plates: vermilion for the pitch and the form, near-black for the product.
-Display type is Bodoni Moda at 700 — a didone's hairlines disappear into a flat
-vermilion with a press texture over it, so the headline is set bold and the
-texture is held at 24% rather than letting the type thin out. It still switches
-between roman and italic mid-phrase as a system rather than as an accent on one
-word. DM Mono carries the marginalia; the reading copy is the plain system sans,
-the same stack the tool uses. Both self-hosted faces are served from `fonts/` —
-no render-blocking third-party request, and no reader's IP goes to a font CDN to
-load a signup page.
+Two plates: cream paper for the pitch and the form, navy for the product. The
+headline is Instrument Sans at 700, broken by one word set in Instrument Serif
+italic — a grotesk/editorial-serif switch rather than a single didone doing
+both jobs. A flowing gradient ribbon (cobalt → green → orange → pink) draws in
+behind the hero on load, and halftone dot clusters sit in the corners of both
+plates as texture. IBM Plex Mono carries the marginalia and the lab-notebook
+numbering (`No. 001`, `01–03`, `Fig. 01`) that runs the length of the page; the
+reading copy is Instrument Sans, the same face the tool uses. All three faces
+load from Google Fonts with `display=swap`, so nothing blocks first paint.
 
-Every colour pair on the vermilion was checked rather than eyeballed: ink at 72%
-opacity over that orange is only 3.2:1, so body copy, marginalia and labels are
-all solid ink, and reduced opacity is left to the rules.
+Every colour pair was checked rather than eyeballed: cobalt text and marks
+against the cream ground clear AA comfortably, and the one places opacity is
+used for de-emphasis (labels, timestamps) stay well clear of the 4.5:1 floor
+for body-sized text.
 
-The black plate is a mockup of the outbox — three sent DMs and the day's tally,
+The navy plate is a mockup of the outbox — three sent DMs and the day's tally,
 built from real markup rather than a screenshot, so it stays sharp and re-flows
 on a phone. **The names and handles in it are invented**, and the plate is
-labelled `SAMPLE` and `names are fictional` on its own face. Replace it with
+labelled `Sample` and `names are fictional` on its own face. Replace it with
 genuine sends when there are some worth showing.
 
 There is no social-proof row. Inventing customer logos for an unreleased tool
@@ -54,12 +53,11 @@ true instead.
 # The tool
 
 The tool and the site are one brand: the same paper-plane mark, the same
-vermilion, bone and ink. Two deliberate differences. The tool's vermilion is
-`#D8460F` rather than the landing's `#F2521C`, because the accent is used as
-*text* there and `#F2521C` is only 3.7:1 on a light surface. And the tool sets
-its figures in the system mono, not DM Mono, whose zero is slashed with no
-plain alternate — fine for a timestamp on a poster, bad in an app whose main
-screen is counts and streaks.
+cream, cobalt, ink. Both now share the exact same accent (`#2C4CDB`) and the
+exact same type system (Instrument Sans, Instrument Serif italic for the
+wordmark's "Aura", IBM Plex Mono for figures) — there is no longer a
+deliberate divergence between the two the way there was under the old
+vermilion brand.
 
 It was called Reach until the rename. A store saved under the old
 `reach.v1.default` key is migrated to `dmaura.v1.default` on first load, so
