@@ -393,6 +393,31 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 .authcard .btn{display:block;width:100%;box-sizing:border-box}
 .authcard .btn+.btn{margin-top:8px}
 .authfoot{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;line-height:1.5}
+
+.onboardcard{max-width:420px}
+.obtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.obdots{display:flex;gap:6px}
+.obdots i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block}
+.obdots i.on{background:var(--send);width:18px;border-radius:4px;transition:all .2s ease}
+.obskip{font-size:12.5px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.onboardcard h1{font-family:var(--serif);font-style:italic;font-weight:400;font-size:26px;margin:0 0 8px}
+.obsteps{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+.obstep{display:flex;gap:12px}
+.obstep b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--sunk);color:var(--ink-2);display:grid;place-items:center;font-family:var(--mono);font-size:12.5px;font-weight:700}
+.obstep strong{display:block;font-size:14px;font-weight:640;margin-bottom:2px}
+.obstep span{display:block;font-size:13px;color:var(--muted);line-height:1.5}
+.obres{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.obres-row{display:flex;align-items:center;gap:10px;border:1px solid var(--line-soft);border-radius:12px;padding:12px}
+.obres-txt{flex:1;min-width:0}
+.obres-txt b{display:block;font-size:14px;font-weight:640}
+.obres-txt span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.obres-open{flex:none;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:13px;font-weight:620;text-decoration:none;white-space:nowrap}
+.obsoon{flex:none;font-size:12px;color:var(--muted);font-style:italic}
+.oblabel{font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:8px}
+.obchips{display:flex;flex-wrap:wrap;gap:8px}
+.obfoot{display:flex;gap:8px;margin-top:24px}
+.obbtn{flex:1;padding:13px 10px;border-radius:12px;font-size:14.5px;font-weight:660;text-align:center;border:1px solid var(--line);color:var(--ink-2);background:var(--surface-2);cursor:pointer}
+.obbtn.primary{background:var(--ink);color:var(--ground);border-color:var(--ink)}
 </style>
 </head>
 <body>
@@ -419,6 +444,17 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
     <button class="btn primary" id="payMonthly">Subscribe — $9/mo</button>
     <button class="btn" id="payLifetime">Get lifetime — $99</button>
     <p class="authfoot">Already paid? <a href="#" id="payRefresh">Refresh this page</a> if it doesn't unlock in a few seconds.<br />Wrong account? <a href="#" id="paySignOut">Sign out</a></p>
+  </div>
+</div>
+
+<div class="auth" id="onboardScreen" hidden>
+  <div class="authcard onboardcard">
+    <div class="obtop">
+      <div class="obdots" id="obDots"></div>
+      <button type="button" class="obskip" id="obSkip">Skip</button>
+    </div>
+    <div id="obBody"></div>
+    <div class="obfoot" id="obFoot"></div>
   </div>
 </div>
 
@@ -669,7 +705,8 @@ function blank(){
       me:"", company:"", pitch:"help founders turn their audience into pipeline",
       question:"how are you handling outbound right now?",
       dailyGoal:20, dailyCap:60, paceSeconds:0,
-      theme:"auto", tplId:null, openInApp:false, autoCopy:true, updated:0
+      theme:"auto", tplId:null, openInApp:false, autoCopy:true,
+      onboarded:false, onboardGoal:"", onboardSource:"", updated:0
     }
   };
 }
@@ -2756,6 +2793,7 @@ function startApp(){
 function showAuth(){
   $(".app").hidden = true;
   $("#payScreen").hidden = true;
+  $("#onboardScreen").hidden = true;
   $("#authScreen").hidden = false;
   $("#booting").hidden = true;
 }
@@ -2764,10 +2802,105 @@ function hideAuth(){ $("#authScreen").hidden = true; }
 function showPaywall(){
   $(".app").hidden = true;
   $("#authScreen").hidden = true;
+  $("#onboardScreen").hidden = true;
   $("#payScreen").hidden = false;
   $("#booting").hidden = true;
 }
 function hidePaywall(){ $("#payScreen").hidden = true; }
+
+/* ------------------------------ onboarding ------------------------------
+   Shown once, right after enterApp() confirms a paid account — see
+   enterApp() below. Answers ride along on the same profiles.settings sync
+   as everything else (README "How the sync works"); no separate table. */
+const RESOURCES = CLOUD_CFG.RESOURCES || {};
+let onboardStep = 0;
+const onboardAnswers = { goal:"", source:"" };
+
+function obResourceRow(label, url, desc){
+  return `<div class="obres-row">
+    <div class="obres-txt"><b>${esc(label)}</b><span>${esc(desc)}</span></div>
+    ${url ? `<a class="obres-open" href="${esc(url)}" target="_blank" rel="noopener">Open</a>`
+          : `<span class="obsoon">Coming soon</span>`}
+  </div>`;
+}
+function obChip(q, val, label){
+  const on = onboardAnswers[q] === val;
+  return `<button type="button" class="chip obchip" aria-pressed="${on}" data-q="${q}" data-v="${esc(val)}">${esc(label)}</button>`;
+}
+const ONBOARD_SLIDES = [
+  () => `
+    <h1>You're in.</h1>
+    <p class="help">Here's the whole loop, start to finish:</p>
+    <div class="obsteps">
+      <div class="obstep"><b>1</b><div><strong>Import leads</strong><span>Drop a CSV or paste profile links — columns get matched automatically.</span></div></div>
+      <div class="obstep"><b>2</b><div><strong>Personalize, then send</strong><span>Every message starts from a template. Edit it, then one tap opens the DM on X, already typed.</span></div></div>
+      <div class="obstep"><b>3</b><div><strong>Track what works</strong><span>Mark replies as they land and watch reply rate by template in the CRM.</span></div></div>
+    </div>`,
+  () => `
+    <h1>Where to find us</h1>
+    <p class="help">Bookmark these — you'll want them.</p>
+    <div class="obres">
+      ${obResourceRow("Community", RESOURCES.community, "Ask questions, share what's working with other senders.")}
+      ${obResourceRow("Help docs", RESOURCES.docs, "Templates, token reference, troubleshooting.")}
+      ${obResourceRow("Support", RESOURCES.support, "Stuck on something? We read every message.")}
+    </div>`,
+  () => `
+    <h1>Two quick questions</h1>
+    <p class="help">Helps us build the right things next — optional, ten seconds.</p>
+    <div class="obq">
+      <div class="oblabel">What are you mainly using DM Aura for?</div>
+      <div class="obchips" data-q="goal">
+        ${obChip("goal","calls","Book sales calls")}
+        ${obChip("goal","audience","Grow an audience")}
+        ${obChip("goal","sell","Sell a product")}
+        ${obChip("goal","recruit","Recruiting")}
+        ${obChip("goal","other","Something else")}
+      </div>
+      <div class="oblabel" style="margin-top:18px">How'd you hear about us?</div>
+      <div class="obchips" data-q="source">
+        ${obChip("source","x","X / Twitter")}
+        ${obChip("source","friend","Friend or colleague")}
+        ${obChip("source","search","Search")}
+        ${obChip("source","other","Other")}
+      </div>
+    </div>`
+];
+function renderOnboard(){
+  $("#obDots").innerHTML = ONBOARD_SLIDES.map((_,i) => `<i class="${i===onboardStep?"on":""}"></i>`).join("");
+  $("#obBody").innerHTML = ONBOARD_SLIDES[onboardStep]();
+  $$("#obBody .obchip").forEach(b => b.addEventListener("click", () => {
+    const q = b.getAttribute("data-q"), v = b.getAttribute("data-v");
+    onboardAnswers[q] = onboardAnswers[q] === v ? "" : v;   // tap again to clear
+    renderOnboard();
+  }));
+  const last = onboardStep === ONBOARD_SLIDES.length - 1;
+  $("#obFoot").innerHTML =
+    (onboardStep > 0 ? `<button type="button" class="obbtn" id="obBack">Back</button>` : "") +
+    `<button type="button" class="obbtn primary" id="obNext">${last ? "Get started" : "Next"}</button>`;
+  if(onboardStep > 0) $("#obBack").addEventListener("click", () => { onboardStep--; renderOnboard(); });
+  $("#obNext").addEventListener("click", () => {
+    if(last) finishOnboarding();
+    else { onboardStep++; renderOnboard(); }
+  });
+}
+function showOnboarding(){
+  $(".app").hidden = true;
+  $("#authScreen").hidden = true;
+  $("#payScreen").hidden = true;
+  $("#onboardScreen").hidden = false;
+  $("#booting").hidden = true;
+  onboardStep = 0;
+  renderOnboard();
+}
+function finishOnboarding(){
+  db.settings.onboarded = true;
+  db.settings.onboardGoal = onboardAnswers.goal;
+  db.settings.onboardSource = onboardAnswers.source;
+  db.settings.updated = Date.now();
+  save();
+  $("#onboardScreen").hidden = true;
+  revealApp();
+}
 
 /* checkout=success is set on the redirect back from Stripe (see landing/index.html
    and startCheckoutFromApp below) — the webhook that actually marks the
@@ -2823,9 +2956,14 @@ async function enterApp(user){
   history.replaceState(null, "", location.pathname);   // drop ?checkout=success either way
   if(!paid){ showPaywall(); return; }
   hidePaywall();
-  $(".app").hidden = false;
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();
+  if(!db.settings.onboarded){ showOnboarding(); return; }
+  revealApp();
+}
+function revealApp(){
+  $("#onboardScreen").hidden = true;
+  $(".app").hidden = false;
   startApp();
   startPeriodicSync();
 }
@@ -2891,6 +3029,7 @@ if(CLOUD_ON){
   $("#payLifetime").addEventListener("click", e => startCheckoutFromApp("lifetime", e.currentTarget));
   $("#payRefresh").addEventListener("click", e => { e.preventDefault(); location.reload(); });
   $("#paySignOut").addEventListener("click", async e => { e.preventDefault(); await sb.auth.signOut(); });
+  $("#obSkip").addEventListener("click", finishOnboarding);
 
   sb.auth.onAuthStateChange((event, session) => {
     if(session && session.user){
