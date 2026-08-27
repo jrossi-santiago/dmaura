@@ -579,6 +579,7 @@ function blank(){
     leads: [],
     templates: STARTER_TEMPLATES.map(t => ({id:uid(), name:t.name, body:t.body, updated:Date.now()})),
     deleted: [],
+    deletedTemplates: [],
     deletedDms: [],
     settings: {
       me:"", company:"", pitch:"help founders turn their audience into pipeline",
@@ -623,6 +624,7 @@ function load(){
     d.templates = (d.templates||[]).length ? d.templates : base.templates;
     d.settings = Object.assign(base.settings, d.settings||{});
     d.deleted = d.deleted || [];
+    d.deletedTemplates = d.deletedTemplates || [];
     d.deletedDms = d.deletedDms || [];
     return d;
   }catch(e){ return blank(); }
@@ -681,39 +683,43 @@ function rowToLead(r){
     created:new Date(r.created_at).getTime(), updated:new Date(r.updated_at).getTime()
   });
 }
+function persistLocal(){ try{ localStorage.setItem(cacheKey(), JSON.stringify(db)); }catch(e){} }
+
 async function pushToCloud(){
   if(!CLOUD_ON || !cloudUser) return;
   const uidc = cloudUser.id;
   try{
     if(db.leads.length) await sb.from("leads").upsert(db.leads.map(l => leadToRow(l, uidc)));
-    if(db.deleted.length){
-      await sb.from("leads").delete().in("id", db.deleted);
-      db.deleted = [];
-    }
     if(db.templates.length){
       await sb.from("templates").upsert(db.templates.map(t => ({
         id:t.id, user_id:uidc, name:t.name, body:t.body,
         updated_at:new Date(t.updated||Date.now()).toISOString()
       })));
     }
-    const { data:cloudTpls } = await sb.from("templates").select("id").eq("user_id", uidc);
-    const liveIds = new Set(db.templates.map(t => t.id));
-    const staleIds = (cloudTpls||[]).map(r => r.id).filter(id => !liveIds.has(id));
-    if(staleIds.length) await sb.from("templates").delete().in("id", staleIds);
     await sb.from("profiles").upsert({
       id:uidc, settings:db.settings, updated_at:new Date(db.settings.updated||Date.now()).toISOString()
     });
-    localStorage.setItem(cacheKey(), JSON.stringify(db));   // db.deleted just changed
+
+    const tombstones = [
+      ...db.deleted.map(id => ({ id, user_id:uidc, kind:"lead", deleted_at:new Date().toISOString() })),
+      ...db.deletedTemplates.map(id => ({ id, user_id:uidc, kind:"template", deleted_at:new Date().toISOString() }))
+    ];
+    if(tombstones.length) await sb.from("tombstones").upsert(tombstones);
+    if(db.deleted.length) await sb.from("leads").delete().in("id", db.deleted);
+    if(db.deletedTemplates.length) await sb.from("templates").delete().in("id", db.deletedTemplates);
+    db.deleted = []; db.deletedTemplates = [];
+    persistLocal();
   }catch(e){ /* offline, or the SQL below hasn't been run yet — local copy is still safe */ }
 }
 async function pullFromCloud(){
   if(!CLOUD_ON || !cloudUser) return;
   const uidc = cloudUser.id;
   try{
-    const [leadsRes, tplRes, profRes] = await Promise.all([
+    const [leadsRes, tplRes, profRes, tombRes] = await Promise.all([
       sb.from("leads").select("*").eq("user_id", uidc),
       sb.from("templates").select("*").eq("user_id", uidc),
-      sb.from("profiles").select("*").eq("id", uidc).maybeSingle()
+      sb.from("profiles").select("*").eq("id", uidc).maybeSingle(),
+      sb.from("tombstones").select("*").eq("user_id", uidc)
     ]);
     if(leadsRes.error) throw leadsRes.error;
 
@@ -723,7 +729,6 @@ async function pullFromCloud(){
       const cloudUpdated = new Date(r.updated_at).getTime();
       if(!local || cloudUpdated > local.updated) byId.set(r.id, rowToLead(r));
     });
-    db.leads = Array.from(byId.values());
 
     const tplById = new Map(db.templates.map(t => [t.id, t]));
     (tplRes.data||[]).forEach(r => {
@@ -732,6 +737,17 @@ async function pullFromCloud(){
       if(!local || cloudUpdated > (local.updated||0))
         tplById.set(r.id, { id:r.id, name:r.name, body:r.body, updated:cloudUpdated });
     });
+
+    // A tombstone newer than a row's local edit wins: the delete is authoritative
+    // unless this device made an even-later edit that hasn't reached the cloud yet.
+    (tombRes.data||[]).forEach(t => {
+      const target = t.kind === "lead" ? byId : tplById;
+      const local = target.get(t.id);
+      const deletedAt = new Date(t.deleted_at).getTime();
+      if(local && deletedAt >= (local.updated||0)) target.delete(t.id);
+    });
+
+    db.leads = Array.from(byId.values());
     db.templates = Array.from(tplById.values());
 
     const prof = profRes.data;
@@ -2017,6 +2033,7 @@ function openTemplates(){
       if(db.templates.length < 2){ toast("Keep at least one"); return; }
       const id = del.getAttribute("data-del");
       db.templates = db.templates.filter(t => t.id !== id);
+      db.deletedTemplates.push(id);
       if(db.settings.tplId === id) db.settings.tplId = db.templates[0].id;
       save(); openTemplates(); renderList();
     }
@@ -2273,7 +2290,8 @@ function openSettings(){
         const uidc = cloudUser.id;
         await Promise.all([
           sb.from("leads").delete().eq("user_id", uidc),
-          sb.from("templates").delete().eq("user_id", uidc)
+          sb.from("templates").delete().eq("user_id", uidc),
+          sb.from("tombstones").delete().eq("user_id", uidc)
         ]);
         await sb.from("profiles").delete().eq("id", uidc);
       }catch(e){}
@@ -2370,6 +2388,26 @@ async function enterApp(user){
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();
   startApp();
+  startPeriodicSync();
+}
+
+/* Keeps two signed-in devices converging without a manual reload: pull again
+   whenever the tab regains focus, and every 45s while it's open. Not
+   real-time — see README — but close enough for one person on two devices. */
+let syncTimer = null, syncing = false;
+async function refreshFromCloud(){
+  if(!CLOUD_ON || !cloudUser || syncing) return;
+  syncing = true;
+  try{ await pullFromCloud(); persistLocal(); renderAll(); }
+  finally{ syncing = false; }
+}
+function startPeriodicSync(){
+  stopPeriodicSync();
+  syncTimer = setInterval(refreshFromCloud, 45000);
+}
+function stopPeriodicSync(){
+  if(syncTimer) clearInterval(syncTimer);
+  syncTimer = null;
 }
 
 /* ------------------------------ auth screen ------------------------------ */
@@ -2416,6 +2454,7 @@ if(CLOUD_ON){
     }else if(event === "SIGNED_OUT"){
       cloudUser = null;
       db = blank();
+      stopPeriodicSync();
       showAuth();
     }
   });
@@ -2430,7 +2469,13 @@ if(CLOUD_ON){
 }
 
 // A day can roll over while the tab sits open; refresh the counters on return.
-document.addEventListener("visibilitychange", () => { if(!document.hidden) renderStats(); });
+// Also the main trigger for "I added a lead on my phone, is it here yet?" —
+// coming back to this tab pulls immediately instead of waiting on the interval.
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden) return;
+  renderStats();
+  refreshFromCloud();
+});
 
 if("serviceWorker" in navigator && location.protocol.startsWith("http")){
   navigator.serviceWorker.register("sw.js").catch(() => {});

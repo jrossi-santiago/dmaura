@@ -235,23 +235,42 @@ create unique index if not exists leads_user_xid    on leads (user_id, xid)    w
 create unique index if not exists leads_user_handle on leads (user_id, lower(handle)) where handle <> '';
 create index if not exists leads_user_status on leads (user_id, status);
 
--- Every table is per-user; one policy shape covers all of them.
-alter table profiles  enable row level security;
-alter table templates enable row level security;
-alter table leads     enable row level security;
+-- One row per deleted lead/template so a delete on one device reaches every
+-- other signed-in device instead of getting silently re-created by whichever
+-- device pushes its (stale, pre-delete) local copy next.
+create table if not exists tombstones (
+  id         uuid not null,
+  user_id    uuid not null references auth.users on delete cascade,
+  kind       text not null check (kind in ('lead','template')),
+  deleted_at timestamptz not null default now(),
+  primary key (id, kind)
+);
 
-drop policy if exists own_profiles  on profiles;
-drop policy if exists own_templates on templates;
-drop policy if exists own_leads     on leads;
-create policy own_profiles  on profiles  for all using (auth.uid() = id)      with check (auth.uid() = id);
-create policy own_templates on templates for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy own_leads     on leads     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- Every table is per-user; one policy shape covers all of them.
+alter table profiles   enable row level security;
+alter table templates  enable row level security;
+alter table leads      enable row level security;
+alter table tombstones enable row level security;
+
+drop policy if exists own_profiles   on profiles;
+drop policy if exists own_templates  on templates;
+drop policy if exists own_leads      on leads;
+drop policy if exists own_tombstones on tombstones;
+create policy own_profiles   on profiles   for all using (auth.uid() = id)      with check (auth.uid() = id);
+create policy own_templates  on templates  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy own_leads      on leads      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy own_tombstones on tombstones for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 
 (This is a simpler shape than an earlier draft of this section: DMs live as
 a `jsonb` column on `leads` instead of their own table, matching how the
 client already nests them under each lead — one row per lead to upsert,
 instead of keeping a second table in sync.)
+
+If you ran the SQL from an earlier version of this README (no `tombstones`
+table), just run the block above again — every statement is `if not exists`
+or `drop ... ; create ...`, so it adds what's missing without touching your
+existing rows.
 
 ### 3. Point the app at it
 
@@ -287,17 +306,24 @@ now-signed-in account.
 
 ### How the sync works
 
-- `save()` (already the single write path for every mutation) also debounces
-  a push to Postgres ~900ms later — a full upsert of `leads` + `templates` +
-  the `profiles` settings row for the signed-in user, plus deleting rows
-  whose ids are in the local tombstone list.
-- Sign-in pulls all three tables for that user and merges into the local
-  copy, last-write-wins by `updated_at` vs the local record's `updated`.
-- Offline or before the SQL above has been run, pushes/pulls just fail
-  silently and the app keeps working off `localStorage` — nothing blocks on
-  the network.
-- Known gap: if you delete a lead on device A, then device B (which never
-  re-pulls in between) can still have it locally — there's no cross-device
-  delete tombstone table. Fine for one person testing across a couple of
-  devices; would need a `deleted_leads` table with `deleted_at` for a real
-  multi-device guarantee.
+- `save()` (already the single write path for every mutation) debounces a
+  push to Postgres ~900ms later — a full upsert of `leads` + `templates` +
+  the `profiles` settings row for the signed-in user. A lead or template you
+  delete locally is deleted from its table in the same push, and stamped
+  into `tombstones` so every other signed-in device removes it too.
+- Sign-in pulls `leads`, `templates`, `profiles`, and `tombstones` for that
+  user and merges into the local copy: newer `updated_at` wins per row, and
+  any row with a tombstone newer than its local `updated` gets removed
+  locally instead of resurrected.
+- While the app is open and signed in, it also pulls on **tab focus**
+  (switching back to the tab) and every **45 seconds** in the background —
+  so a lead added on your phone shows up on your laptop without a manual
+  reload, typically within under a minute.
+- Offline, or before the SQL above has been run (so the `tombstones` table
+  doesn't exist yet), pushes/pulls just fail silently and the app keeps
+  working off `localStorage` — nothing blocks on the network.
+- Not real-time: two devices editing the *same* lead within the same
+  ~45-second window still resolve by last-write-wins on `updated_at`, so the
+  later save wins and the earlier one is overwritten. Fine for one person
+  moving between their own phone and laptop; a true multi-editor tool would
+  want Supabase Realtime subscriptions instead of polling.
