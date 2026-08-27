@@ -645,6 +645,20 @@ function firstName(s){
   const clean = String(s||"").replace(/[^\p{L}\p{N}\s'’.-]/gu," ").trim();
   return clean.split(/\s+/)[0] || "";
 }
+// Scraped names/bios/locations swing between ALL CAPS SHOUTING and stray
+// mid-word caps. Retitle any run of letters that's fully uppercase and
+// longer than 3 chars (so real acronyms like CEO, AI, NYC survive) down to
+// Title Case; leave anything already mixed-case (eBay, McDonald) alone.
+function fixCaps(s){
+  return String(s||"").replace(/\p{L}[\p{L}’'-]*/gu, w => {
+    const letters = w.replace(/[^\p{L}]/gu,"");
+    if(letters.length <= 3) return w;
+    if(letters === letters.toUpperCase() && letters !== letters.toLowerCase()){
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    }
+    return w;
+  });
+}
 function plural(n, one, many){ return n===1 ? one : (many||one+"s"); }
 
 let toastT, toastUndo = null;
@@ -755,16 +769,18 @@ const ASKS = ["Worth a quick look?","Open to me sending it over?","Want the shor
 
 function tokenValues(l){
   const s = db.settings;
-  const bio = String(l.bio||"").replace(/\s+/g," ").trim();
+  const name = fixCaps(String(l.name||"").trim());
+  const bio = fixCaps(String(l.bio||"").replace(/\s+/g," ").trim());
+  const location = fixCaps(String(l.location||"").trim());
   return {
-    first: firstName(l.name) || l.handle || "there",
-    name: l.name || l.handle || "there",
+    first: firstName(name) || l.handle || "there",
+    name: name || l.handle || "there",
     handle: l.handle ? "@"+l.handle : "",
     bio: bio,
     bioshort: bio.length > 70 ? bio.slice(0,67).trim()+"…" : bio,
-    topic: topicOf(l),
+    topic: topicOf(bio),
     followers: compact(l.followers),
-    location: l.location || "",
+    location: location,
     website: l.website || "",
     me: s.me || "",
     company: s.company || "",
@@ -776,9 +792,9 @@ function tokenValues(l){
 }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-// A cheap stand-in for "what are they about" — first clause of the bio.
-function topicOf(l){
-  const bio = String(l.bio||"").replace(/\s+/g," ").trim();
+// A cheap stand-in for "what are they about" — first clause of the (already
+// case-normalized) bio.
+function topicOf(bio){
   if(!bio) return "what you're building";
   const part = bio.split(/[|•·—–\-\/,.]/).map(s=>s.trim()).filter(s=>s.length>3)[0];
   return (part || bio).slice(0,48).replace(/[.\s]+$/,"") || "what you're building";
@@ -2011,8 +2027,30 @@ function openStats(){
   });
   chart.addEventListener("pointerleave", () => tip.classList.remove("on"));
 }
+function openTodaySent(){
+  const list = dmsOn(today());
+  const rows = list.length ? list.map(x => {
+    const l = x.lead, d = x.dm;
+    const snippet = esc(String(d.text||"").replace(/\s+/g," ").trim());
+    return `<div class="row">
+      ${avatarHTML(l)}
+      <div class="nm"><b>${esc(l.name || l.handle || "Unknown")}</b><span>${esc(when(d.at))} · ${snippet}</span></div>
+      <button class="mini" data-openlead="${l.id}">Profile</button>
+    </div>`;
+  }).join("") : `<p class="help" style="margin:4px 0">Nothing sent yet today.</p>`;
+  modal("Sent today" + (list.length ? " (" + list.length + ")" : ""), `<div class="rows">${rows}</div>`,
+    `<button class="btn" id="tsClose">Close</button>`);
+  $("#tsClose").addEventListener("click", closeSheet);
+  const wrap = $("#mBody").querySelector(".rows");
+  if(wrap) wrap.addEventListener("click", e => {
+    const b = e.target.closest("[data-openlead]"); if(!b) return;
+    const id = b.getAttribute("data-openlead");
+    closeSheet();
+    setTimeout(() => openLead(id), 260);
+  });
+}
 $("#btnStats").addEventListener("click", openStats);
-$("#tToday").addEventListener("click", openStats);
+$("#tToday").addEventListener("click", openTodaySent);
 $("#tStreak").addEventListener("click", openStats);
 $("#tRep").addEventListener("click", () => { state.filter = "replied"; renderFilters(); renderList(); });
 $("#tQueue").addEventListener("click", () => { state.filter = "queue"; renderFilters(); renderList(); });
