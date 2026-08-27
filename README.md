@@ -458,6 +458,14 @@ now-signed-in account.
 
 ## Payments (Stripe)
 
+**Status: live in test mode.** Steps 1–7 below have already been run
+against this repo's Supabase project (`fkregyidgjovkzujcslw`) with a Stripe
+**test** key — the two Prices, the `paid_customers` table, both Edge
+Functions, and the webhook are all deployed. What's left is testing an
+actual purchase (step 8) and, when ready, swapping in a `sk_live_...` key
+and a second live-mode webhook. Re-run these steps as-is if you ever need
+to point this at a different Supabase or Stripe project.
+
 The landing page's two pricing buttons (`landing/index.html`) send people to
 Stripe Checkout, and the app (`app/index.html`) shows a paywall screen —
 instead of the leads sheet — to any signed-in account that hasn't paid.
