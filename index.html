@@ -166,8 +166,6 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .eyebrow::after{content:""; flex:1; height:1px; background:var(--rule)}
 
 form{margin-top:0}
-.pair{display:grid; grid-template-columns:1fr 1fr; gap:0 20px}
-@media (max-width:430px){ .pair{grid-template-columns:1fr} }
 
 .fld{position:relative; padding-top:19px; margin-bottom:4px}
 .fld input{
@@ -332,7 +330,7 @@ body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
 .rail{animation-delay:.04s}
 h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.17s}
 .feats{animation-delay:.24s} .deck{animation-delay:.3s} .eyebrow{animation-delay:.35s}
-.f1{animation-delay:.4s} .f2{animation-delay:.45s} .f3{animation-delay:.5s}
+.f1{animation-delay:.4s} .f2{animation-delay:.45s}
 .consent{animation-delay:.55s} .go{animation-delay:.6s} .colophon{animation-delay:.66s}
 .plate .pr{animation-delay:.12s}
 .dm:nth-child(1){animation-delay:.3s} .dm:nth-child(2){animation-delay:.4s} .dm:nth-child(3){animation-delay:.5s}
@@ -413,20 +411,9 @@ h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.
           <span class="note" id="email-note"></span>
         </div>
 
-        <div class="pair">
-          <div class="fld f2 anim">
-            <input id="first" name="firstName" type="text" placeholder=" " autocomplete="given-name" />
-            <label for="first">First name</label>
-          </div>
-          <div class="fld f2 anim">
-            <input id="last" name="lastName" type="text" placeholder=" " autocomplete="family-name" />
-            <label for="last">Last name</label>
-          </div>
-        </div>
-
-        <div class="fld f3 anim">
-          <input id="company" name="company" type="text" placeholder=" " autocomplete="organization" />
-          <label for="company">Company</label>
+        <div class="fld f2 anim">
+          <input id="first" name="firstName" type="text" placeholder=" " autocomplete="given-name" />
+          <label for="first">First name</label>
         </div>
 
         <label class="consent anim">
