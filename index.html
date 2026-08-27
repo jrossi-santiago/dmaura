@@ -273,41 +273,40 @@ body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
   gap:clamp(10px,1.5vh,15px); padding:clamp(20px,3.6vh,40px) 0; min-width:0;
 }
 
-.dm{
-  background:var(--navy-2); border:1px solid var(--cream-t-14); border-radius:9px;
-  padding:0 15px 12px; transform:rotate(var(--rot,0deg));
-  box-shadow:0 12px 30px rgba(0,0,0,.5); max-width:min(430px,100%);
-  border-top:none; overflow:hidden;
+.thread{
+  background:#0B0C10; border:1px solid var(--cream-t-14); border-radius:16px;
+  box-shadow:0 20px 50px rgba(0,0,0,.55); max-width:min(430px,100%);
+  width:100%; align-self:center; display:flex; flex-direction:column; overflow:hidden;
 }
-.dm .bar{height:4px; margin:0 -15px 13px; background:var(--accent,var(--cobalt))}
-.dm:nth-child(1){align-self:flex-start}
-.dm:nth-child(2){align-self:flex-end; margin-right:clamp(0px,1vw,10px)}
-.dm:nth-child(3){align-self:flex-start; margin-left:clamp(0px,2vw,24px)}
-.dm .who{display:flex; align-items:center; gap:9px; margin-bottom:9px}
-.dm .av{
-  width:28px; height:28px; border-radius:50%; flex:none; display:grid; place-items:center;
-  font-family:var(--mono); font-size:.58rem; letter-spacing:.02em; font-weight:500;
-  background:var(--accent,var(--cobalt)); color:var(--avtext,#fff);
+.thead{
+  display:flex; align-items:center; gap:10px; padding:14px 16px;
+  border-bottom:1px solid rgba(237,231,216,.09); flex:none;
 }
-.dm .nm{flex:1; min-width:0}
-.dm .nm b{display:block; font-family:var(--sans); font-size:.87rem; font-weight:600; color:var(--cream-t);
-  line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.dm .nm span{display:block; font-family:var(--mono); font-size:.6rem; letter-spacing:.04em; color:var(--cream-t-65)}
-.dm .tag{
-  flex:none; font-family:var(--mono); font-size:.54rem; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--cream-t); border:1px solid var(--accent,var(--cobalt)); padding:2px 7px 2px 6px; border-radius:2px;
-  display:flex; align-items:center; gap:5px;
+.tav{
+  width:32px; height:32px; border-radius:50%; flex:none; display:grid; place-items:center;
+  font-family:var(--mono); font-size:.62rem; letter-spacing:.02em; font-weight:500;
+  background:var(--cobalt); color:#fff;
 }
-.dm .tag::before{content:""; width:5px; height:5px; border-radius:50%; background:var(--accent,var(--cobalt))}
-.dm .tag.man{border-color:var(--cream-t-40)}
-.dm .tag.man::before{background:var(--cream-t-65)}
-.dm p{margin:0; font-family:var(--sans); font-size:.885rem; line-height:1.55; color:rgba(237,231,216,.92)}
-.dm .ft{display:flex; align-items:center; gap:8px; margin-top:11px; padding-top:9px;
-  border-top:1px solid var(--cream-t-14); font-family:var(--mono); font-size:.58rem;
-  letter-spacing:.09em; text-transform:uppercase; color:var(--cream-t-65)}
-.dm .ft .sp{flex:1}
-.dm .ft .ok{color:var(--accent,var(--cobalt)); display:flex; align-items:center; gap:5px}
-.dm .ft .ok svg{width:9px; height:9px; stroke:currentColor; fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round}
+.twho{min-width:0}
+.twho b{display:block; font-family:var(--sans); font-size:.87rem; font-weight:600; color:var(--cream-t); line-height:1.25}
+.twho span{display:block; font-family:var(--sans); font-size:.74rem; color:var(--cream-t-65)}
+.tbody{padding:18px 16px; display:flex; flex-direction:column; gap:16px}
+.tdate{align-self:center; font-family:var(--mono); font-size:.6rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--cream-t-65)}
+.grp{display:flex; flex-direction:column; gap:4px; max-width:82%}
+.grp.out{align-self:flex-end; align-items:flex-end}
+.grp.in{align-self:flex-start; align-items:flex-start}
+.bub{font-family:var(--sans); font-size:.87rem; line-height:1.45; padding:9px 14px}
+.grp.out .bub{background:var(--cobalt); color:#fff; border-radius:18px 18px 5px 18px}
+.grp.in .bub{background:#262A31; color:rgba(237,231,216,.94)}
+.grp.in .bub:first-child{border-radius:18px 18px 18px 5px}
+.grp.in .bub:last-child{border-radius:5px 18px 18px 18px}
+.stamp{font-family:var(--sans); font-size:.68rem; color:var(--cream-t-65); margin-top:2px}
+.tcompose{
+  margin:0 16px 16px; padding:10px 16px; border-radius:999px; background:#15171D;
+  border:1px solid rgba(237,231,216,.1); font-family:var(--sans); font-size:.8rem;
+  color:var(--cream-t-40); flex:none;
+}
 
 .tally{
   display:flex; align-items:stretch; gap:0; border:1px solid var(--cream-t-14);
@@ -326,18 +325,17 @@ body[data-sent] .done{display:block; animation:rise .55s var(--ease) both}
 
 @keyframes rise{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
 .anim{opacity:0; animation:rise .7s var(--ease) both}
-.dm{animation:rise .7s var(--ease) both}
 .rail{animation-delay:.04s}
 h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.17s}
 .feats{animation-delay:.24s} .deck{animation-delay:.3s} .eyebrow{animation-delay:.35s}
 .f1{animation-delay:.4s} .f2{animation-delay:.45s}
 .consent{animation-delay:.55s} .go{animation-delay:.6s} .colophon{animation-delay:.66s}
 .plate .pr{animation-delay:.12s}
-.dm:nth-child(1){animation-delay:.3s} .dm:nth-child(2){animation-delay:.4s} .dm:nth-child(3){animation-delay:.5s}
+.thread{animation-delay:.3s}
 .tally{animation-delay:.6s} .plate .foot{animation-delay:.7s}
 
 @media (prefers-reduced-motion:reduce){
-  .anim,.dm,.done{animation:none !important; opacity:1 !important; transform:rotate(var(--rot,0deg)) !important}
+  .anim,.done{animation:none !important; opacity:1 !important}
   .go .spin{animation:none}
   .ribbon path{animation:none !important; stroke-dashoffset:0 !important}
   *{transition-duration:.01ms !important}
@@ -467,51 +465,32 @@ h1 span:nth-child(1){animation-delay:.1s} h1 span:nth-child(2){animation-delay:.
 
     <div class="stage">
 
-      <article class="dm" style="--rot:-1.6deg; --accent:var(--cobalt)">
-        <div class="bar"></div>
-        <div class="who">
-          <span class="av" style="--avtext:#fff">MR</span>
-          <span class="nm"><b>Maya Reyes</b><span>@mayaships</span></span>
-          <span class="tag">Prefilled</span>
+      <div class="thread anim">
+        <div class="thead">
+          <span class="tav">MR</span>
+          <div class="twho"><b>Maya Reyes</b><span>@mayaships</span></div>
         </div>
-        <p>Maya — your thread on running design systems solo is the clearest thing
-          I've read on it. I'm Alex, I help small teams turn an audience into pipeline.
-          Worth a look?</p>
-        <div class="ft">
-          <span>09:41</span><span class="sp"></span>
-          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Sent</span>
-        </div>
-      </article>
 
-      <article class="dm" style="--rot:1.3deg; --accent:var(--orange)">
-        <div class="bar"></div>
-        <div class="who">
-          <span class="av" style="--avtext:#15130F">DO</span>
-          <span class="nm"><b>Devon Okoye</b><span>@devonbuilds</span></span>
-          <span class="tag">Prefilled</span>
-        </div>
-        <p>Hey Devon — caught your post on cold outbound being a numbers game and
-          hating it. Same. Built something for that. Want the short version?</p>
-        <div class="ft">
-          <span>09:44</span><span class="sp"></span>
-          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Replied</span>
-        </div>
-      </article>
+        <div class="tbody">
+          <div class="tdate"><span>Today</span></div>
 
-      <article class="dm" style="--rot:-.7deg; --accent:var(--green)">
-        <div class="bar"></div>
-        <div class="who">
-          <span class="av" style="--avtext:#15130F">PN</span>
-          <span class="nm"><b>Priya Nair</b><span>@priyanair</span></span>
-          <span class="tag man">Copied</span>
+          <div class="grp out">
+            <div class="bub">Maya — your thread on running design systems solo is
+              the clearest thing I've read on it. I'm Alex, I help small teams turn
+              an audience into pipeline. Worth a look?</div>
+            <span class="stamp">9:41 PM</span>
+          </div>
+
+          <div class="grp in">
+            <div class="bub">Ha, appreciate that — I get pitched a lot, that's a
+              good one though.</div>
+            <div class="bub">Yeah, go ahead — send it over.</div>
+            <span class="stamp">9:58 PM</span>
+          </div>
         </div>
-        <p>Priya — no numeric ID on your row, so this one got copied to the clipboard
-          and pasted by hand. Took nine seconds instead of one.</p>
-        <div class="ft">
-          <span>09:46</span><span class="sp"></span>
-          <span class="ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Sent</span>
-        </div>
-      </article>
+
+        <div class="tcompose"><span>Message @mayaships…</span></div>
+      </div>
 
       <div class="tally anim">
         <div><b>37</b><span>Sent today</span></div>
