@@ -168,18 +168,16 @@ h2 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
   border-bottom:1px solid var(--rule);
 }
 .nav .wrap{display:flex; align-items:center; gap:22px; padding-top:16px; padding-bottom:16px}
-.nav .edn{color:var(--ink-55); border-right:1px solid var(--rule-2); padding-right:16px}
 .nav .links{display:flex; align-items:center; gap:26px}
-.nav .links a:not(.btn){font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; text-decoration:none; color:var(--ink-70); transition:color .18s var(--ease)}
+.nav .links a:not(.btn){font-family:var(--mono); font-size:.72rem; letter-spacing:.1em; text-decoration:none; color:var(--ink-70); transition:color .18s var(--ease)}
 .nav .links a:not(.btn):hover{color:var(--ink)}
 .nav .sp{flex:1}
-.nav .btn{height:42px; padding:0 18px}
+.nav .btn{height:42px; padding:0 18px; text-transform:none}
 .burger{display:none; width:38px; height:38px; border:1.5px solid var(--rule-2); border-radius:4px; background:transparent; cursor:pointer; align-items:center; justify-content:center}
 .burger span, .burger span::before, .burger span::after{content:""; display:block; width:16px; height:1.6px; background:var(--ink); position:relative; transition:.2s var(--ease)}
 .burger span::before{position:absolute; top:-5px}
 .burger span::after{position:absolute; top:5px}
 @media (max-width:860px){
-  .nav .edn{display:none}
   .nav .links{position:absolute; left:0; right:0; top:100%; background:var(--cream-hi); flex-direction:column;
     align-items:flex-start; gap:0; border-bottom:1px solid var(--rule); max-height:0; overflow:hidden; transition:max-height .25s var(--ease)}
   .nav.open .links{max-height:320px}
@@ -392,7 +390,6 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
       </svg>
       <b>DM <em>Aura</em></b>
     </a>
-    <span class="mono edn">No. 002</span>
     <span class="sp"></span>
     <div class="links" id="navLinks">
       <a href="#how">How it works</a>
