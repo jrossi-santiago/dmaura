@@ -18,8 +18,13 @@
   body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);padding:24px 16px 60px}
   .wrap{max-width:980px;margin:0 auto}
   h1{font-size:22px;font-weight:700;margin:0 0 4px}
-  .sub{color:var(--muted);font-size:13.5px;margin:0 0 24px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 20px}
   .sub b{color:var(--ink)}
+  .accountbar{display:none;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 14px;margin-bottom:20px;font-size:13px}
+  .accountbar .who{color:var(--muted)}
+  .accountbar .who b{color:var(--ink);font-weight:600}
+  .accountbar button{background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:5px 12px;font-size:12.5px;font-family:var(--sans);cursor:pointer}
+  .accountbar button:hover{border-color:var(--muted)}
   .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:120px}
   .stat .n{font-family:var(--mono);font-size:22px;font-weight:600}
@@ -38,12 +43,24 @@
   .scroll{overflow-x:auto;border-radius:12px}
   .msg{padding:40px 0;text-align:center;color:var(--muted)}
   .err{background:#FCEBEA;border:1px solid #F2C6C2;color:var(--red);padding:12px 16px;border-radius:10px;font-size:13.5px;margin-bottom:16px}
+  .loginform{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;max-width:340px}
+  .loginform label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:14px}
+  .loginform input{display:block;width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:var(--sans);background:var(--ground)}
+  .loginform input:focus{outline:2px solid var(--cobalt);outline-offset:1px}
+  .loginform button{width:100%;padding:10px;border:none;border-radius:8px;background:var(--cobalt);color:#fff;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;margin-top:4px}
+  .loginform button:hover{opacity:.92}
+  .loginform button:disabled{opacity:.6;cursor:default}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Trial activation</h1>
-  <p class="sub">Activated = imported a list and sent <b id="threshold">20</b> DMs within <b id="window">48</b> hours of signup. No login screen yet — see README before sharing this URL.</p>
+  <p class="sub">Activated = imported a list and sent <b id="threshold">20</b> DMs within <b id="window">48</b> hours of signup.</p>
+
+  <div id="accountBar" class="accountbar">
+    <span class="who">Signed in as <b id="whoEmail"></b></span>
+    <button id="signOutBtn" type="button">Sign out</button>
+  </div>
 
   <div id="statsRow" class="stats"></div>
   <div id="content"><div class="msg">Loading…</div></div>
@@ -76,6 +93,8 @@ document.getElementById("window").textContent = ACTIVATION_WINDOW_HOURS;
 
 const content = document.getElementById("content");
 const statsRow = document.getElementById("statsRow");
+const accountBar = document.getElementById("accountBar");
+let sb = null;
 
 function fmtDate(iso){
   if(!iso) return '<span class="dim">—</span>';
@@ -90,22 +109,47 @@ function esc(s){
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
-async function load(){
-  try{
-    await loadScript(APP_DIR + "config.js");
-  }catch(e){
-    content.innerHTML = `<div class="err">Couldn't load <code>${esc(APP_DIR)}config.js</code>: ${esc(e.message)}</div>`;
-    return;
-  }
-  const CFG = window.DMAURA_CONFIG || {};
-  if(!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY){
-    content.innerHTML = '<div class="err">No Supabase project configured in <code>app/config.js</code> — this dashboard needs one (see README).</div>';
-    return;
-  }
-  const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+function renderLoginForm(message){
+  accountBar.style.display = "none";
+  statsRow.innerHTML = "";
+  content.innerHTML = `
+    <form id="loginForm" class="loginform">
+      ${message ? `<div class="err">${esc(message)}</div>` : ""}
+      <label>Email<input type="email" id="loginEmail" required autocomplete="email"></label>
+      <label>Password<input type="password" id="loginPassword" required autocomplete="current-password"></label>
+      <button type="submit" id="loginSubmit">Sign in</button>
+      <div id="loginErr" class="err" style="display:none;margin-top:14px"></div>
+    </form>
+  `;
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    const submitBtn = document.getElementById("loginSubmit");
+    const errBox = document.getElementById("loginErr");
+    errBox.style.display = "none";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in…";
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Sign in";
+    if(error){
+      errBox.textContent = error.message;
+      errBox.style.display = "block";
+      return;
+    }
+    render();
+  });
+}
+
+async function loadDashboard(){
   const { data, error } = await sb.rpc("admin_trial_activation");
 
   if(error){
+    if(/not authorized/i.test(error.message)){
+      renderLoginForm("That account isn't on the admin list — sign in with an admin email, or add this one to the allowlist in the SQL function.");
+      return;
+    }
     content.innerHTML = `<div class="err">Couldn't load activation data: ${esc(error.message)}<br><br>
       Most likely the <code>admin_trial_activation</code> SQL function hasn't been run yet in Supabase
       (SQL Editor → paste the block from the README's "Admin: trial activation dashboard" section → Run).</div>`;
@@ -154,7 +198,40 @@ async function load(){
     </div>
   `;
 }
-load();
+
+async function render(){
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user){
+    renderLoginForm();
+    return;
+  }
+  document.getElementById("whoEmail").textContent = user.email;
+  accountBar.style.display = "flex";
+  content.innerHTML = '<div class="msg">Loading…</div>';
+  await loadDashboard();
+}
+
+document.getElementById("signOutBtn").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  render();
+});
+
+async function init(){
+  try{
+    await loadScript(APP_DIR + "config.js");
+  }catch(e){
+    content.innerHTML = `<div class="err">Couldn't load <code>${esc(APP_DIR)}config.js</code>: ${esc(e.message)}</div>`;
+    return;
+  }
+  const CFG = window.DMAURA_CONFIG || {};
+  if(!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY){
+    content.innerHTML = '<div class="err">No Supabase project configured in <code>app/config.js</code> — this dashboard needs one (see README).</div>';
+    return;
+  }
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  render();
+}
+init();
 </script>
 </body>
 </html>

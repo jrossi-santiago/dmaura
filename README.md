@@ -307,7 +307,9 @@ a list, DM count, and whether they hit **20 DMs within 48 hours of signup**
 It reads through one Postgres function instead of querying `leads`/`auth.users`
 directly, because RLS normally walls every user off from every other user's
 rows — this function is the one deliberate exception, aggregating across all
-users. Run this once in the SQL Editor, after the block above:
+users. It checks the caller's own logged-in email against an allowlist before
+returning anything, so being signed in isn't enough — you have to be signed in
+*as an admin*. Run this once in the SQL Editor, after the block above:
 
 ```sql
 create or replace function admin_trial_activation()
@@ -322,10 +324,17 @@ returns table (
   dms_in_48h       bigint,
   activated        boolean
 )
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
+begin
+  -- Add more admin emails to this array as needed, then re-run this block.
+  if auth.email() is null or auth.email() <> all (array['jrossi@preemptglobal.com']) then
+    raise exception 'not authorized';
+  end if;
+
+  return query
   with dm_events as (
     select l.user_id, (dm->>'at')::bigint as at_ms
     from leads l, jsonb_array_elements(l.dms) as dm
@@ -363,23 +372,31 @@ as $$
   left join per_user_dm pd on pd.user_id = s.user_id
   left join dms_48h d48 on d48.user_id = s.user_id
   order by s.signed_up_at desc;
+end;
 $$;
 
-grant execute on function admin_trial_activation() to anon, authenticated;
+-- Only signed-in users may even attempt to call it; the email check above
+-- then filters that down to admins only. Anonymous callers are rejected
+-- before the query runs at all.
+revoke all on function admin_trial_activation() from public;
+grant execute on function admin_trial_activation() to authenticated;
 ```
 
 `security definer` means the function runs with the privileges of the user
 who created it (you, the project owner), bypassing RLS on purpose — that's
 what lets one query see every user's row. It only returns the aggregated
-columns above, never raw leads, drafts, or message content.
+columns above, never raw leads, drafts, or message content. `auth.email()`
+reads from the caller's own JWT, so it can't be spoofed by editing anything
+in the browser — a non-admin gets a Postgres-level rejection no matter what
+the page's JS does.
 
-**No password on `app/admin/` yet.** Anyone with the URL — or anyone who
-calls this function directly with the project's anon key — can read every
-trial user's email and activation status. Fine while the tool is unreleased
-and pre-launch; before real signups arrive, gate the page (e.g. check
-`auth.getUser()` against your own email, or `revoke execute ... from anon`
-and require a signed-in admin session) and consider dropping `email` from
-the returned columns if the dashboard doesn't need it.
+**The "password" is just your Supabase login.** `app/admin/` now shows a
+sign-in form (same email/password auth as the main app) instead of data.
+Sign in with an account whose email is in the allowlist above and the
+dashboard loads; any other account — or staying signed out — gets "not
+authorized." Nothing new to store in Vercel or anywhere else: the anon key
+stays public as designed, and the real gate lives in Postgres, keyed to
+your email, not a shared secret sitting in client-side JS.
 
 ### 3. Point the app at it
 
