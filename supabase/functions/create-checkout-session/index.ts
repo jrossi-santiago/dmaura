@@ -1,0 +1,65 @@
+// Called from landing/index.html (anonymous) and app/index.html (signed in but
+// unpaid) to start a Stripe Checkout session. The client only ever picks a
+// plan name ("monthly" | "lifetime") — the actual Stripe Price id is resolved
+// here from an env var, so nobody can tamper with the request to pay less.
+//
+// Deploy: supabase functions deploy create-checkout-session --project-ref <ref>
+// Secrets this needs (supabase secrets set ...): STRIPE_SECRET_KEY,
+// STRIPE_PRICE_MONTHLY, STRIPE_PRICE_LIFETIME. See README "Payments (Stripe)".
+import Stripe from "https://esm.sh/stripe@17.5.0?target=deno";
+
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+  apiVersion: "2024-06-20",
+  httpClient: Stripe.createFetchHttpClient(),
+});
+
+const PRICE_IDS: Record<string, string> = {
+  monthly: Deno.env.get("STRIPE_PRICE_MONTHLY") ?? "",
+  lifetime: Deno.env.get("STRIPE_PRICE_LIFETIME") ?? "",
+};
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const { plan, email, successUrl, cancelUrl } = await req.json();
+    const priceId = PRICE_IDS[plan];
+    if (!priceId) {
+      return new Response(JSON.stringify({ error: "unknown plan" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!successUrl || !cancelUrl) {
+      return new Response(JSON.stringify({ error: "missing successUrl/cancelUrl" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: plan === "lifetime" ? "payment" : "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      customer_email: email || undefined,
+      client_reference_id: email || undefined,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      allow_promotion_codes: true,
+    });
+
+    return new Response(JSON.stringify({ url: session.url }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

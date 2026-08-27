@@ -412,6 +412,16 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
   </div>
 </div>
 
+<div class="auth" id="payScreen" hidden>
+  <div class="authcard">
+    <h1>DM <em>Aura</em></h1>
+    <p class="help" id="payHelp">Pick a plan to unlock your account — the leads and templates you make are waiting behind checkout.</p>
+    <button class="btn primary" id="payMonthly">Subscribe — $9/mo</button>
+    <button class="btn" id="payLifetime">Get lifetime — $99</button>
+    <p class="authfoot">Already paid? <a href="#" id="payRefresh">Refresh this page</a> if it doesn't unlock in a few seconds.<br />Wrong account? <a href="#" id="paySignOut">Sign out</a></p>
+  </div>
+</div>
+
 <div class="app">
   <header class="topbar">
     <div class="brandrow">
@@ -2745,14 +2755,74 @@ function startApp(){
 
 function showAuth(){
   $(".app").hidden = true;
+  $("#payScreen").hidden = true;
   $("#authScreen").hidden = false;
   $("#booting").hidden = true;
 }
 function hideAuth(){ $("#authScreen").hidden = true; }
 
+function showPaywall(){
+  $(".app").hidden = true;
+  $("#authScreen").hidden = true;
+  $("#payScreen").hidden = false;
+  $("#booting").hidden = true;
+}
+function hidePaywall(){ $("#payScreen").hidden = true; }
+
+/* checkout=success is set on the redirect back from Stripe (see landing/index.html
+   and startCheckoutFromApp below) — the webhook that actually marks the
+   account paid can lag a second or two behind that redirect, so only then
+   is it worth a few retries instead of failing straight to the paywall. */
+function cameFromCheckout(){
+  return new URLSearchParams(location.search).get("checkout") === "success";
+}
+async function isPaidAccount(allowRetry){
+  const tries = allowRetry ? 6 : 1;
+  for(let i = 0; i < tries; i++){
+    try{
+      const { data } = await sb.from("paid_customers").select("status").maybeSingle();
+      if(data && data.status === "active") return true;
+    }catch(e){ /* offline, or the SQL below hasn't been run yet */ }
+    if(i < tries - 1) await new Promise(r => setTimeout(r, 1500));
+  }
+  return false;
+}
+async function startCheckoutFromApp(plan, btn){
+  const label = btn.textContent;
+  $$("#payScreen .btn").forEach(b => b.disabled = true);
+  btn.textContent = "Redirecting…";
+  try{
+    const res = await fetch(CLOUD_CFG.SUPABASE_URL + "/functions/v1/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + CLOUD_CFG.SUPABASE_ANON_KEY,
+        "apikey": CLOUD_CFG.SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        plan,
+        email: cloudUser ? cloudUser.email : undefined,
+        successUrl: location.origin + location.pathname + "?checkout=success",
+        cancelUrl: location.origin + location.pathname
+      })
+    });
+    const data = await res.json();
+    if(!data.url) throw new Error(data.error || "no checkout url returned");
+    location.href = data.url;
+  }catch(e){
+    $("#payHelp").textContent = "Couldn't start checkout — try again in a moment.";
+    $$("#payScreen .btn").forEach(b => b.disabled = false);
+    btn.textContent = label;
+  }
+}
+
 async function enterApp(user){
   cloudUser = user;
   hideAuth();
+  const paid = await isPaidAccount(cameFromCheckout());
+  history.replaceState(null, "", location.pathname);   // drop ?checkout=success either way
+  if(!paid){ showPaywall(); return; }
+  hidePaywall();
   $(".app").hidden = false;
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();
@@ -2816,6 +2886,11 @@ if(CLOUD_ON){
   [$("#auEmail"), $("#auPass")].forEach(el => el.addEventListener("keydown", e => {
     if(e.key === "Enter") doAuth("in");
   }));
+
+  $("#payMonthly").addEventListener("click", e => startCheckoutFromApp("monthly", e.currentTarget));
+  $("#payLifetime").addEventListener("click", e => startCheckoutFromApp("lifetime", e.currentTarget));
+  $("#payRefresh").addEventListener("click", e => { e.preventDefault(); location.reload(); });
+  $("#paySignOut").addEventListener("click", async e => { e.preventDefault(); await sb.auth.signOut(); });
 
   sb.auth.onAuthStateChange((event, session) => {
     if(session && session.user){

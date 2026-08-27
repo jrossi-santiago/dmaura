@@ -453,3 +453,142 @@ now-signed-in account.
   later save wins and the earlier one is overwritten. Fine for one person
   moving between their own phone and laptop; a true multi-editor tool would
   want Supabase Realtime subscriptions instead of polling.
+
+---
+
+## Payments (Stripe)
+
+The landing page's two pricing buttons (`landing/index.html`) send people to
+Stripe Checkout, and the app (`app/index.html`) shows a paywall screen —
+instead of the leads sheet — to any signed-in account that hasn't paid.
+Requires the Supabase project from the section above; the paid/unpaid flag
+lives in Postgres, not in the browser, so it can't be spoofed from devtools.
+
+How it fits together: the browser never talks to Stripe's secret API
+directly — it calls a small Supabase **Edge Function** that creates the
+Checkout session server-side, and Stripe's **webhook** calls a second Edge
+Function when money actually moves, which is what flips the account to
+paid. Both functions live in `supabase/functions/` in this repo.
+
+### 1. Create the products in Stripe
+
+Stripe dashboard → **Product catalog → Add product**, twice:
+
+| Product | Price | Billing |
+| --- | --- | --- |
+| DM Aura — Monthly | $9.00 | Recurring, monthly |
+| DM Aura — Lifetime | $99.00 | One-time |
+
+Open each product and copy its **Price ID** (`price_...`, not the product
+id `prod_...`) — you'll need both in step 3.
+
+### 2. Get your API keys
+
+Dashboard → **Developers → API keys** → copy the **Secret key**
+(`sk_live_...` or `sk_test_...` while testing). Never put this one in
+`config.js` or anything served to the browser — it only ever goes into
+Supabase's server-side function secrets, below.
+
+### 3. Install the Supabase CLI and link your project
+
+```bash
+npm install -g supabase
+supabase login
+supabase link --project-ref <your-project-ref>   # the xxxx in xxxx.supabase.co
+```
+
+### 4. Set the function secrets
+
+```bash
+supabase secrets set \
+  STRIPE_SECRET_KEY=sk_live_xxx \
+  STRIPE_PRICE_MONTHLY=price_xxx \
+  STRIPE_PRICE_LIFETIME=price_xxx \
+  SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` is under **Settings → API** next to the anon
+key — this is the one the README's other section warns you to keep out of
+client code; here it's server-side only, inside the webhook function, so
+that's fine. `STRIPE_WEBHOOK_SECRET` gets added in step 6, after Stripe
+hands it to you.
+
+### 5. Run the SQL
+
+Same place as the multi-user setup above — **SQL Editor → New query**:
+
+```sql
+create table if not exists paid_customers (
+  email                   text primary key,
+  stripe_customer_id      text,
+  stripe_subscription_id  text,
+  plan                    text not null check (plan in ('monthly','lifetime')),
+  status                  text not null default 'active' check (status in ('active','canceled','past_due')),
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+
+alter table paid_customers enable row level security;
+
+-- A signed-in user may read only the row matching their own auth email —
+-- nobody can see or list anyone else's paid status this way. Only the
+-- webhook (via the service_role key, which bypasses RLS) ever writes here.
+drop policy if exists own_paid_status on paid_customers;
+create policy own_paid_status on paid_customers
+  for select using (lower(email) = lower(auth.email()));
+```
+
+### 6. Deploy the two functions
+
+```bash
+supabase functions deploy create-checkout-session --project-ref <your-project-ref>
+supabase functions deploy stripe-webhook --project-ref <your-project-ref> --no-verify-jwt
+```
+
+`--no-verify-jwt` on the webhook matters — Stripe calls it directly with a
+`stripe-signature` header, not a Supabase auth token, so the default
+JWT check would reject every event with 401 before your code ever runs.
+`create-checkout-session` keeps the default check; the landing page and app
+both call it with the public anon key, which is a valid Supabase JWT.
+
+Each deploy prints the function's URL, shaped like:
+
+```
+https://<your-project-ref>.supabase.co/functions/v1/create-checkout-session
+https://<your-project-ref>.supabase.co/functions/v1/stripe-webhook
+```
+
+Nothing in this repo needs editing for those URLs — both client-side
+callers build them from `SUPABASE_URL` in `config.js`, which is already
+set.
+
+### 7. Point Stripe at the webhook
+
+Dashboard → **Developers → Webhooks → Add endpoint**:
+
+- **Endpoint URL**: the `stripe-webhook` URL printed in step 6.
+- **Events to send**: `checkout.session.completed` and
+  `customer.subscription.deleted` (the second one is what revokes access
+  when someone cancels their monthly subscription).
+
+After creating it, open the endpoint and copy its **Signing secret**
+(`whsec_...`), then add the piece from step 4 that was still missing:
+
+```bash
+supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
+```
+
+### 8. Test it
+
+Use one of [Stripe's test cards](https://docs.stripe.com/testing) (e.g.
+`4242 4242 4242 4242`, any future expiry, any CVC) while `STRIPE_SECRET_KEY`
+is a `sk_test_...` key. Click a pricing button on `landing/index.html`,
+complete checkout, and you should land back on `app/` — sign up or sign in
+with the same email, and the paywall should clear within a couple of
+seconds (it retries a few times right after a `?checkout=success` redirect,
+since the webhook can lag slightly behind Stripe's own redirect). Check
+**Developers → Webhooks → (your endpoint) → recent deliveries** in Stripe
+if it doesn't; a failed delivery there means the URL, `--no-verify-jwt`, or
+`STRIPE_WEBHOOK_SECRET` is off. Swap in your `sk_live_...` key (and set up
+a second, live-mode webhook endpoint) once you're ready to take real
+payments — Stripe test and live objects don't cross over automatically.
