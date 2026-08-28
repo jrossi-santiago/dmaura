@@ -466,6 +466,21 @@ actual purchase (step 8) and, when ready, swapping in a `sk_live_...` key
 and a second live-mode webhook. Re-run these steps as-is if you ever need
 to point this at a different Supabase or Stripe project.
 
+**Both plans include a 5-day free trial that auto-charges the card
+collected at checkout when the trial ends.** Stripe only supports trials on
+recurring Prices, not one-time "payment mode" charges — so `Lifetime`'s
+Price in step 1 must be **recurring**, not one-time, even though the
+customer is only ever meant to pay once. `create-checkout-session` starts
+*both* plans as a subscription Checkout session with `trial_period_days: 5`;
+for `lifetime`, `stripe-webhook` cancels that subscription itself right
+after its one real invoice pays, so it never renews. If you already have a
+one-time `Lifetime` Price from before this change, add a new **recurring**
+Price to that same product (interval doesn't matter — it's canceled before
+any renewal) and update `STRIPE_PRICE_LIFETIME` to the new Price id; the old
+one-time Price can stay around unused. Expect Stripe's dashboard to show a
+lifetime purchase as a subscription that went trialing → active → canceled
+after one invoice — that's expected, not a failed payment.
+
 The landing page's two pricing buttons (`landing/index.html`) are plain links
 to `app/?plan=monthly` or `app/?plan=lifetime` — checkout never starts
 anonymously. The app signs the person up (or in) first, and once they're
@@ -492,10 +507,11 @@ Stripe dashboard → **Product catalog → Add product**, twice:
 | Product | Price | Billing |
 | --- | --- | --- |
 | DM Aura — Monthly | $9.00 | Recurring, monthly |
-| DM Aura — Lifetime | $99.00 | One-time |
+| DM Aura — Lifetime | $99.00 | Recurring (any interval — see note above; canceled after the first charge so it never actually renews) |
 
-Open each product and copy its **Price ID** (`price_...`, not the product
-id `prod_...`) — you'll need both in step 3.
+Both need **"Recurring"** selected in Stripe, even Lifetime — trials only
+exist on recurring Prices. Open each product and copy its **Price ID**
+(`price_...`, not the product id `prod_...`) — you'll need both in step 3.
 
 ### 2. Get your API keys
 
@@ -582,9 +598,13 @@ set.
 Dashboard → **Developers → Webhooks → Add endpoint**:
 
 - **Endpoint URL**: the `stripe-webhook` URL printed in step 6.
-- **Events to send**: `checkout.session.completed` and
-  `customer.subscription.deleted` (the second one is what revokes access
-  when someone cancels their monthly subscription).
+- **Events to send**: `checkout.session.completed`,
+  `invoice.payment_succeeded`, and `customer.subscription.deleted` —
+  respectively: grants access as soon as checkout completes (trial or not),
+  settles-and-cancels a `lifetime` subscription right after its one real
+  charge, and revokes access when a `monthly` subscription actually gets
+  canceled (a `lifetime` cancellation triggered by the settle-and-cancel
+  step above is recognized via its `lifetime_settled` metadata and ignored).
 
 After creating it, open the endpoint and copy its **Signing secret**
 (`whsec_...`), then add the piece from step 4 that was still missing:
@@ -599,13 +619,26 @@ Use one of [Stripe's test cards](https://docs.stripe.com/testing) (e.g.
 `4242 4242 4242 4242`, any future expiry, any CVC) while `STRIPE_SECRET_KEY`
 is a `sk_test_...` key. Click a pricing button on `landing/index.html` — it
 takes you to `app/`, where you sign up (or sign in) first, then checkout
-starts on its own for the plan you picked. Complete it and you should land
-back on `app/`, where the paywall clears within a couple of seconds (it
-retries a few times right after a `?checkout=success` redirect, since the
-webhook can lag slightly behind Stripe's own redirect) and the onboarding
-screen from the section below runs once before the leads sheet. Check
+starts on its own for the plan you picked. Complete it (Stripe still asks
+for a card even though $0 is due today — that's expected, it's what gets
+charged automatically when the trial ends) and you should land back on
+`app/`, where the paywall clears within a couple of seconds (it retries a
+few times right after a `?checkout=success` redirect, since the webhook can
+lag slightly behind Stripe's own redirect) and the onboarding screen from
+the section below runs once before the leads sheet. Check
 **Developers → Webhooks → (your endpoint) → recent deliveries** in Stripe
 if it doesn't; a failed delivery there means the URL, `--no-verify-jwt`, or
 `STRIPE_WEBHOOK_SECRET` is off. Swap in your `sk_live_...` key (and set up
 a second, live-mode webhook endpoint) once you're ready to take real
 payments — Stripe test and live objects don't cross over automatically.
+
+To test the trial actually converting to a charge without waiting 5 real
+days, use a [Stripe test clock](https://docs.stripe.com/test-mode/test-clocks):
+create one in **Developers → Test clocks**, attach the Customer that
+checkout created to it, then advance the clock past 5 days. Watch
+**Developers → Webhooks → recent deliveries** for `invoice.payment_succeeded`
+(and, for the `lifetime` plan, a follow-up `customer.subscription.deleted`
+that should *not* touch `paid_customers` — confirm the row's `status` is
+still `active` afterward) and check the subscription's status in the
+dashboard: `monthly` should read `active`, `lifetime` should read
+`canceled` with exactly one paid invoice.

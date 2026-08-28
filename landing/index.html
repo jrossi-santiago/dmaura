@@ -338,9 +338,10 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .pcard.feat{border-color:var(--cobalt); background:var(--navy-3); box-shadow:0 0 0 1px var(--cobalt) inset}
 .pcard .pk{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:#7C93FF; margin-bottom:10px}
 .pcard h3{font-family:var(--sans); font-weight:700; font-size:1.5rem; margin:0 0 6px; letter-spacing:-.015em}
-.pcard .price{display:flex; align-items:baseline; gap:7px; margin-bottom:18px}
+.pcard .price{display:flex; align-items:baseline; gap:7px; margin-bottom:6px}
 .pcard .price b{font-family:var(--sans); font-size:2.1rem; font-weight:700; letter-spacing:-.02em; color:#fff}
 .pcard .price span{font-family:var(--mono); font-size:.78rem; letter-spacing:.04em; color:var(--cream-t-65)}
+.pcard .trialnote{font-family:var(--mono); font-size:.72rem; letter-spacing:.03em; color:#7C93FF; margin:0 0 18px}
 .pcard ul{display:flex; flex-direction:column; gap:11px; margin:0 0 24px; flex:1}
 .pcard li{display:flex; gap:10px; align-items:flex-start; font-size:.9rem; color:var(--cream-t-65); line-height:1.5}
 .pcard li svg{width:14px; height:14px; margin-top:3px; flex:none; stroke:var(--green); fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
@@ -704,6 +705,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
           <span class="pk">Flexible</span>
           <h3>Monthly</h3>
           <p class="price"><b>$9</b><span>/ month</span></p>
+          <p class="trialnote">5-day free trial, then $9/mo</p>
           <ul>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Unlimited leads, CSV or paste import</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Messages that personalize &amp; reword themselves</li>
@@ -712,12 +714,13 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Step-by-step guides for finding IDs</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Cancel anytime</li>
           </ul>
-          <a class="btn ghost" href="../app/?plan=monthly">Subscribe monthly<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
+          <a class="btn ghost" href="../app/?plan=monthly">Start free trial<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
         </div>
         <div class="pcard feat">
           <span class="pk">Best value</span>
           <h3>Lifetime</h3>
           <p class="price"><b>$99</b><span>one-time</span></p>
+          <p class="trialnote">5-day free trial, then $99 once</p>
           <ul>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Everything in Monthly</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Pay once, own it for good</li>
@@ -725,10 +728,12 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Step-by-step guides for finding IDs</li>
             <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Multi-device sync when it ships</li>
           </ul>
-          <a class="btn primary" href="../app/?plan=lifetime">Get lifetime access<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
+          <a class="btn primary" href="../app/?plan=lifetime">Start free trial<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
         </div>
       </div>
-      <p class="pnote" id="pricingNote">Secure checkout via Stripe. Cancel the monthly plan anytime.</p>
+      <p class="pnote" id="pricingNote">Secure checkout via Stripe. Both plans start with a 5-day free trial — we
+        collect your card up front and charge it automatically when the trial ends, unless you cancel first. Cancel
+        anytime from your account.</p>
     </div>
   </section>
 
