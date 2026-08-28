@@ -1,7 +1,19 @@
 // Stripe calls this directly (no Supabase JWT, just a stripe-signature
-// header) whenever a checkout completes or a subscription is canceled. It's
-// the source of truth for the `paid_customers` table the app gates on — the
-// client never gets to just declare itself paid.
+// header) whenever a checkout completes, an invoice is paid, or a
+// subscription is canceled. It's the source of truth for the
+// `paid_customers` table the app gates on — the client never gets to just
+// declare itself paid.
+//
+// Both "monthly" and "lifetime" are Checkout subscriptions with a 5-day
+// trial (see create-checkout-session). For "lifetime" there should only
+// ever be one real charge, so once its first post-trial invoice pays, this
+// function cancels that subscription itself — stamping
+// metadata.lifetime_settled = "true" on it first so the resulting
+// customer.subscription.deleted event (Stripe always fires one on
+// cancellation) is recognized as expected and doesn't revoke the access
+// that invoice just paid for. A subscription that never got that stamp
+// (trial ended with a failed/absent charge, or a real "monthly" cancel)
+// still flips the row to canceled as before.
 //
 // Deploy: supabase functions deploy stripe-webhook --project-ref <ref> --no-verify-jwt
 // Then in the Stripe dashboard, add an endpoint pointing at this function's
@@ -45,13 +57,16 @@ Deno.serve(async (req) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const email = (session.customer_details?.email || session.customer_email || "").toLowerCase();
+    const plan = session.metadata?.plan === "lifetime" ? "lifetime" : "monthly";
     if (email) {
+      // Trial or not, the card is already captured at this point — grant
+      // access immediately rather than waiting for the trial to end.
       const { error } = await supabase.from("paid_customers").upsert(
         {
           email,
           stripe_customer_id: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
           stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null,
-          plan: session.mode === "payment" ? "lifetime" : "monthly",
+          plan,
           status: "active",
           updated_at: new Date().toISOString(),
         },
@@ -61,13 +76,40 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Fires for every paid invoice on a subscription, including the $0 invoice
+  // Stripe generates when a trial starts — amount_paid > 0 filters that out
+  // so this only reacts to the real post-trial charge.
+  if (event.type === "invoice.payment_succeeded") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+    if (subscriptionId && invoice.amount_paid > 0) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        if (sub.metadata?.plan === "lifetime" && sub.status !== "canceled") {
+          await stripe.subscriptions.update(subscriptionId, {
+            metadata: { ...sub.metadata, lifetime_settled: "true" },
+          });
+          await stripe.subscriptions.cancel(subscriptionId);
+        }
+      } catch (err) {
+        console.error("lifetime settle-and-cancel failed", err);
+      }
+    }
+  }
+
   if (event.type === "customer.subscription.deleted") {
     const sub = event.data.object as Stripe.Subscription;
-    const { error } = await supabase
-      .from("paid_customers")
-      .update({ status: "canceled", updated_at: new Date().toISOString() })
-      .eq("stripe_subscription_id", sub.id);
-    if (error) console.error("paid_customers cancel failed", error);
+    if (sub.metadata?.lifetime_settled === "true") {
+      // We canceled this ourselves right after its one real charge so a
+      // "lifetime" plan never renews — not an actual cancellation, so leave
+      // the paid_customers row alone.
+    } else {
+      const { error } = await supabase
+        .from("paid_customers")
+        .update({ status: "canceled", updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", sub.id);
+      if (error) console.error("paid_customers cancel failed", error);
+    }
   }
 
   return new Response(JSON.stringify({ received: true }), {

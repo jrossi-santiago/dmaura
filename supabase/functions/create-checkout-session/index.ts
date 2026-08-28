@@ -3,6 +3,13 @@
 // plan name ("monthly" | "lifetime") — the actual Stripe Price id is resolved
 // here from an env var, so nobody can tamper with the request to pay less.
 //
+// Both plans run through Checkout's subscription mode with a 5-day free
+// trial (Stripe requires a recurring Price for trials — there's no trial on
+// a one-time "payment" mode session). For "lifetime", STRIPE_PRICE_LIFETIME
+// must therefore point at a *recurring* Price in Stripe, not a one-time one;
+// the webhook cancels that subscription right after its first real charge so
+// it never renews. See README "Payments (Stripe)" for the full explanation.
+//
 // Deploy: supabase functions deploy create-checkout-session --project-ref <ref>
 // Secrets this needs (supabase secrets set ...): STRIPE_SECRET_KEY,
 // STRIPE_PRICE_MONTHLY, STRIPE_PRICE_LIFETIME. See README "Payments (Stripe)".
@@ -44,13 +51,25 @@ Deno.serve(async (req) => {
     }
 
     const session = await stripe.checkout.sessions.create({
-      mode: plan === "lifetime" ? "payment" : "subscription",
+      mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       customer_email: email || undefined,
       client_reference_id: email || undefined,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
+      // Card is always collected up front (Checkout's default for
+      // subscription mode) even though $0 is due today — that saved card is
+      // what Stripe charges automatically the moment the trial ends.
+      payment_method_collection: "always",
+      subscription_data: {
+        trial_period_days: 5,
+        // Read back by the webhook: "lifetime" subscriptions get canceled
+        // right after their one real invoice pays so they never renew;
+        // "monthly" ones are left alone to keep billing normally.
+        metadata: { plan },
+      },
+      metadata: { plan },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
