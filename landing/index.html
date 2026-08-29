@@ -210,7 +210,7 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .feats .f .dot{width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:1px}
 .deck{position:relative; z-index:1; margin:clamp(18px,2.6vh,24px) 0 0; max-width:34rem; font-size:1.03rem; line-height:1.66}
 .deck mark{background:var(--cobalt-tint); color:var(--ink); font-family:var(--serif); font-style:italic;
-  font-size:1.12em; padding:0 .32em .05em; border-radius:2px; box-shadow:inset 0 -1.5px 0 var(--cobalt); white-space:nowrap}
+  font-size:1.12em; padding:0 .32em .05em; border-radius:2px; box-shadow:inset 0 -1.5px 0 var(--cobalt)}
 .cta-row{position:relative; z-index:1; display:flex; flex-wrap:wrap; align-items:center; gap:20px; margin-top:clamp(26px,4vh,34px)}
 
 /* ── hero visual: navy plate w/ thread mockup, reused pattern ─────── */
@@ -246,6 +246,16 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .tally b{display:block; font-family:var(--sans); font-size:1.5rem; font-weight:700; line-height:1; letter-spacing:-.01em;
   color:var(--orange); font-variant-numeric:lining-nums tabular-nums}
 .tally span{display:block; font-family:var(--mono); font-size:.56rem; letter-spacing:.1em; text-transform:uppercase; color:var(--cream-t-65); margin-top:6px}
+@media (max-width:700px){
+  .plate{padding:14px}
+  .thread{box-shadow:none}
+  .plate .pr{margin-bottom:12px}
+  .thead{padding:12px 14px}
+  .tbody{padding:14px; gap:12px}
+  .tally{margin-top:12px; box-shadow:none}
+  .tally div{padding:9px 8px}
+  .tally b{font-size:1.3rem}
+}
 
 /* ── sources strip ──────────────────────────────────────────────── */
 .sources{padding:clamp(28px,4vh,40px) 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule)}
@@ -328,6 +338,13 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .cmp tr.highlight td.dm{font-size:1.04rem; font-weight:700}
 .cmp-wrap{overflow-x:auto; border:1px solid var(--rule); border-radius:var(--r)}
 .cmp-wrap .cmp{margin:0}
+@media (max-width:700px){
+  .cmp{table-layout:fixed; font-size:.78rem}
+  .cmp th, .cmp td{padding:12px 10px}
+  .cmp thead th{font-size:.58rem; letter-spacing:.06em}
+  .cmp tbody th{width:28%; font-size:.86rem}
+  .cmp td.dm::before, .cmp td.bot::before{display:block; margin-bottom:2px}
+}
 .cmp-wrap th:first-child, .cmp-wrap td:first-child{padding-left:20px}
 
 /* ── pricing ────────────────────────────────────────────────────── */
