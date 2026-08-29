@@ -14,7 +14,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
 
 <style>
 /* ══════════════════════════════════════════════════════════════════
@@ -350,31 +350,43 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .cmp .src{display:none}
 .cmp-wrap th:first-child, .cmp-wrap td:first-child{padding-left:20px}
 
+.cmp-total{display:none}
+
 /* mobile: a 3-col table stops being legible under ~380px of usable
-   width per column, so each comparison axis becomes its own card —
-   row label as a mono eyebrow, then the two sides stacked as
-   icon+source+description lines (same ✓/– pattern as desktop, just
-   re-flowed instead of squeezed). */
+   width per column. Rebuilt as a single-column ledger instead of a
+   card per row — a numbered, dot-leadered row title (CSS counters,
+   no markup change) with the two verdicts written out underneath as
+   icon+source+description lines. Weight does the hierarchy work: 700
+   for the headline and the one highlighted verdict, 600 for row
+   titles and source labels, 400 for the actual description copy so
+   it reads as prose instead of matching the labels' weight. */
 @media (max-width:700px){
   .cmp-wrap{overflow-x:visible; border:0; border-radius:0; background:transparent}
   .cmp, .cmp tbody{display:block; width:100%}
   .cmp thead{display:none}
-  .cmp tr{display:block; background:var(--cream-hi); border:1px solid var(--rule); border-radius:var(--r); overflow:hidden}
-  .cmp tr + tr{margin-top:14px}
-  .cmp tr.highlight{background:var(--cobalt-tint); border-color:rgba(44,76,219,.35)}
-  .cmp th, .cmp td{display:block; width:auto; border:0; padding:0}
-  .cmp th{font-family:var(--mono); font-size:.66rem; line-height:1.35; letter-spacing:.08em; text-transform:uppercase;
-    font-weight:400; color:var(--ink-55); padding:16px 20px 2px}
-  .cmp tr.highlight th{color:var(--cobalt); box-shadow:none}
-  .cmp td{padding:12px 20px; border-top:1px solid var(--rule); display:flex; align-items:baseline; flex-wrap:wrap; column-gap:7px}
-  .cmp tr.highlight td{border-top-color:rgba(44,76,219,.18)}
-  .cmp td:last-child{padding-bottom:16px}
+  .cmp tbody{counter-reset:cmprow; border-top:1.5px solid var(--ink)}
+  .cmp tr{display:block; counter-increment:cmprow; border-bottom:1px solid var(--rule); padding:20px 0}
+  .cmp tr.highlight{background:var(--cobalt-tint); margin:0 calc(-1 * var(--pad)); padding:20px var(--pad); border-bottom-color:rgba(44,76,219,.2)}
+  .cmp thead th, .cmp td{display:block; width:auto; border:0; padding:0}
+  .cmp tbody th{display:flex; width:auto; border:0; padding:0; align-items:baseline; gap:8px;
+    font-family:var(--sans); font-weight:600; font-size:1rem; color:var(--ink); white-space:nowrap}
+  .cmp tbody th::before{content:counter(cmprow, decimal-leading-zero); font-family:var(--mono); font-weight:500; font-size:.68rem; color:var(--ink-55); flex:none}
+  .cmp tbody th::after{content:""; flex:1; align-self:center; margin-top:-4px; border-bottom:1.5px dotted var(--rule-2)}
+  .cmp tr.highlight th{color:var(--cobalt)}
+  .cmp td{margin-top:9px; padding-left:26px; display:flex; align-items:baseline; column-gap:8px; font-size:.86rem; line-height:1.5}
+  .cmp td + td{margin-top:6px}
   .cmp td.dm::before, .cmp td.bot::before{flex:none}
-  .cmp td .src{display:block; font-family:var(--sans); font-weight:700; font-size:.86rem; color:var(--ink)}
-  .cmp td.bot .src{font-weight:600; color:var(--ink-70)}
-  .cmp td .desc{display:block; flex-basis:100%; margin-top:3px; font-size:.86rem; line-height:1.5; color:var(--ink-70)}
+  .cmp td .src{font-weight:600; flex:none}
+  .cmp td.dm .src{color:var(--ink)}
+  .cmp td.bot .src{color:var(--ink-55)}
+  .cmp td .desc{flex:1 1 auto; min-width:0; font-weight:400; color:var(--ink-70)}
   .cmp td.dm .desc{color:var(--ink)}
-  .cmp tr.highlight td.dm .src, .cmp tr.highlight td.dm .desc{font-size:1rem; font-weight:700}
+  .cmp tr.highlight td.dm .src, .cmp tr.highlight td.dm .desc{font-weight:700; font-size:.94rem}
+
+  .cmp-total{display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    margin-top:26px; padding-top:18px; border-top:1.5px solid var(--ink)}
+  .cmp-total .l{font-family:var(--mono); font-weight:500; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-55)}
+  .cmp-total .v{font-family:var(--serif); font-style:italic; font-weight:400; font-size:1.3rem; color:var(--cobalt)}
 }
 
 /* ── pricing ────────────────────────────────────────────────────── */
@@ -745,6 +757,7 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
           </tbody>
         </table>
       </div>
+      <p class="cmp-total"><span class="l">Net exposure, DM Aura</span><span class="v">none</span></p>
     </div>
   </section>
 
