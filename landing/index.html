@@ -288,9 +288,18 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .band.blue.guides .note{color:rgba(255,255,255,.85)}
 
 /* ── feature rows ───────────────────────────────────────────────── */
+/* NB: this padding shorthand only ever set the vertical rhythm — its
+   "0" horizontal value overrides .wrap's own padding-left/right (same
+   element, later rule wins), so .wrap.feat-rows loses its side gutter
+   entirely below the page's max-width. Desktop hides this by
+   coincidence (the wrap's centering margin still reads as a gutter),
+   but mobile has no such margin, so content sits flush against the
+   screen edge. Restored below, mobile-only, rather than reworking the
+   shared rule and risking any desktop shift. */
 .feat-rows{display:flex; flex-direction:column; gap:clamp(56px,9vh,96px); padding:clamp(56px,9vh,96px) 0}
 .featrow{display:grid; grid-template-columns:minmax(0,1fr); gap:clamp(28px,5vw,56px); align-items:center}
 @media (min-width:940px){ .featrow{grid-template-columns:1fr 1fr} .featrow.rev .col-text{order:2} .featrow.rev .col-vis{order:1} }
+@media (max-width:700px){ .wrap.feat-rows{padding-left:var(--pad); padding-right:var(--pad)} }
 .col-text .k{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--cobalt); display:block; margin-bottom:12px}
 .col-text h3{font-family:var(--sans); font-weight:700; font-size:clamp(1.4rem,2.4vw,1.9rem); letter-spacing:-.015em; margin:0 0 .55em; line-height:1.15}
 .col-text p{margin:0; max-width:32rem; font-size:.98rem; line-height:1.66; color:var(--ink-70)}
@@ -338,14 +347,35 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 .cmp tr.highlight td.dm{font-size:1.04rem; font-weight:700}
 .cmp-wrap{overflow-x:auto; border:1px solid var(--rule); border-radius:var(--r)}
 .cmp-wrap .cmp{margin:0}
-@media (max-width:700px){
-  .cmp{table-layout:fixed; font-size:.78rem}
-  .cmp th, .cmp td{padding:12px 10px}
-  .cmp thead th{font-size:.58rem; letter-spacing:.06em}
-  .cmp tbody th{width:28%; font-size:.86rem; padding-top:32px}
-  .cmp td.dm::before, .cmp td.bot::before{display:block; margin-bottom:2px}
-}
+.cmp .src{display:none}
 .cmp-wrap th:first-child, .cmp-wrap td:first-child{padding-left:20px}
+
+/* mobile: a 3-col table stops being legible under ~380px of usable
+   width per column, so each comparison axis becomes its own card —
+   row label as a mono eyebrow, then the two sides stacked as
+   icon+source+description lines (same ✓/– pattern as desktop, just
+   re-flowed instead of squeezed). */
+@media (max-width:700px){
+  .cmp-wrap{overflow-x:visible; border:0; border-radius:0; background:transparent}
+  .cmp, .cmp tbody{display:block; width:100%}
+  .cmp thead{display:none}
+  .cmp tr{display:block; background:var(--cream-hi); border:1px solid var(--rule); border-radius:var(--r); overflow:hidden}
+  .cmp tr + tr{margin-top:14px}
+  .cmp tr.highlight{background:var(--cobalt-tint); border-color:rgba(44,76,219,.35)}
+  .cmp th, .cmp td{display:block; width:auto; border:0; padding:0}
+  .cmp th{font-family:var(--mono); font-size:.66rem; line-height:1.35; letter-spacing:.08em; text-transform:uppercase;
+    font-weight:400; color:var(--ink-55); padding:16px 20px 2px}
+  .cmp tr.highlight th{color:var(--cobalt); box-shadow:none}
+  .cmp td{padding:12px 20px; border-top:1px solid var(--rule); display:flex; align-items:baseline; flex-wrap:wrap; column-gap:7px}
+  .cmp tr.highlight td{border-top-color:rgba(44,76,219,.18)}
+  .cmp td:last-child{padding-bottom:16px}
+  .cmp td.dm::before, .cmp td.bot::before{flex:none}
+  .cmp td .src{display:block; font-family:var(--sans); font-weight:700; font-size:.86rem; color:var(--ink)}
+  .cmp td.bot .src{font-weight:600; color:var(--ink-70)}
+  .cmp td .desc{display:block; flex-basis:100%; margin-top:3px; font-size:.86rem; line-height:1.5; color:var(--ink-70)}
+  .cmp td.dm .desc{color:var(--ink)}
+  .cmp tr.highlight td.dm .src, .cmp tr.highlight td.dm .desc{font-size:1rem; font-weight:700}
+}
 
 /* ── pricing ────────────────────────────────────────────────────── */
 .pricing{padding:clamp(56px,9vh,96px) 0}
@@ -707,11 +737,11 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <tr><th></th><th>DM Aura</th><th>Bots &amp; automation tools</th></tr>
           </thead>
           <tbody>
-            <tr><th>Who actually sends</th><td class="dm">You, one real tap at a time</td><td class="bot">A bot, signed in as you</td></tr>
-            <tr><th>Setup</th><td class="dm">Import a list — no API key, no dev work</td><td class="bot">Usually an API key or a bot account to configure</td></tr>
-            <tr class="highlight"><th>What's actually on the line</th><td class="dm">Nothing — same as any DM you'd send yourself</td><td class="bot">Your account, and everything built on it — audience, pipeline, clients</td></tr>
-            <tr><th>Message variety</th><td class="dm">Personalized and reworded automatically</td><td class="bot">Often identical, word for word</td></tr>
-            <tr><th>Feels like</th><td class="dm">You, doing outreach faster</td><td class="bot">A growth-hack tool spamming on your behalf</td></tr>
+            <tr><th>Who actually sends</th><td class="dm"><span class="src">DM Aura</span><span class="desc">You, one real tap at a time</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">A bot, signed in as you</span></td></tr>
+            <tr><th>Setup</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Import a list — no API key, no dev work</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">Usually an API key or a bot account to configure</span></td></tr>
+            <tr class="highlight"><th>What's actually on the line</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Nothing — same as any DM you'd send yourself</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">Your account, and everything built on it — audience, pipeline, clients</span></td></tr>
+            <tr><th>Message variety</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Personalized and reworded automatically</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">Often identical, word for word</span></td></tr>
+            <tr><th>Feels like</th><td class="dm"><span class="src">DM Aura</span><span class="desc">You, doing outreach faster</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">A growth-hack tool spamming on your behalf</span></td></tr>
           </tbody>
         </table>
       </div>
