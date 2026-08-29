@@ -376,7 +376,12 @@ h1 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
   .cmp td{margin-top:9px; padding-left:26px; display:flex; align-items:baseline; column-gap:8px; font-size:.86rem; line-height:1.5}
   .cmp td + td{margin-top:6px}
   .cmp td.dm::before, .cmp td.bot::before{flex:none}
-  .cmp td .src{font-weight:600; flex:none}
+  /* the .src label (hidden on desktop, where the column headers already
+     say "DM Aura" / "Bots & automation tools") is the whole point of the
+     mobile ledger: without it every row is just an icon + a sentence,
+     and which side is "us" is left to inferring the icon's color. */
+  .cmp td .src{display:inline; font-weight:600; flex:none}
+  .cmp td .src::after{content:" —"; font-weight:400}
   .cmp td.dm .src{color:var(--ink)}
   .cmp td.bot .src{color:var(--ink-55)}
   .cmp td .desc{flex:1 1 auto; min-width:0; font-weight:400; color:var(--ink-70)}
@@ -749,11 +754,11 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
             <tr><th></th><th>DM Aura</th><th>Bots &amp; automation tools</th></tr>
           </thead>
           <tbody>
-            <tr><th>Who actually sends</th><td class="dm"><span class="src">DM Aura</span><span class="desc">You, one real tap at a time</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">A bot, signed in as you</span></td></tr>
-            <tr><th>Setup</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Import a list — no API key, no dev work</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">Usually an API key or a bot account to configure</span></td></tr>
-            <tr class="highlight"><th>What's actually on the line</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Nothing — same as any DM you'd send yourself</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">Your account, and everything built on it — audience, pipeline, clients</span></td></tr>
-            <tr><th>Message variety</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Personalized and reworded automatically</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">Often identical, word for word</span></td></tr>
-            <tr><th>Feels like</th><td class="dm"><span class="src">DM Aura</span><span class="desc">You, doing outreach faster</span></td><td class="bot"><span class="src">Bots &amp; automation tools</span><span class="desc">A growth-hack tool spamming on your behalf</span></td></tr>
+            <tr><th>Who actually sends</th><td class="dm"><span class="src">DM Aura</span><span class="desc">You, one real tap at a time</span></td><td class="bot"><span class="src">Bots</span><span class="desc">A bot, signed in as you</span></td></tr>
+            <tr><th>Setup</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Import a list — no API key, no dev work</span></td><td class="bot"><span class="src">Bots</span><span class="desc">Usually an API key or a bot account to configure</span></td></tr>
+            <tr class="highlight"><th>What's actually on the line</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Nothing — same as any DM you'd send yourself</span></td><td class="bot"><span class="src">Bots</span><span class="desc">Your account, and everything built on it — audience, pipeline, clients</span></td></tr>
+            <tr><th>Message variety</th><td class="dm"><span class="src">DM Aura</span><span class="desc">Personalized and reworded automatically</span></td><td class="bot"><span class="src">Bots</span><span class="desc">Often identical, word for word</span></td></tr>
+            <tr><th>Feels like</th><td class="dm"><span class="src">DM Aura</span><span class="desc">You, doing outreach faster</span></td><td class="bot"><span class="src">Bots</span><span class="desc">A growth-hack tool spamming on your behalf</span></td></tr>
           </tbody>
         </table>
       </div>
