@@ -1440,18 +1440,25 @@ function nextRotatedTplId(){
   db.settings.tplRotationIndex = (db.settings.tplRotationIndex + 1) % db.templates.length;
   return t.id;
 }
-/* Leads that predate template rotation — already in the queue from before
-   this shipped, or synced down from another device's older version — sit on
-   tplId:null forever. currentTpl() quietly resolves that to the single
-   global default, so every one of them copies the exact same template on
-   send, with nothing that looks like a bug. Give any such lead its place in
-   the rotation once, oldest first, so existing queues start rotating too. */
+/* Two ways a lead ends up off the rotation, and they look identical on send.
+   It can have no template at all — already in the queue from before rotation
+   shipped, or synced down from another device's older version, so tplId:null
+   forever. Or it can point at a template that is *gone*: deleted from the
+   templates sheet here, or deleted on another device and synced down as a
+   tombstone, leaving a tplId that resolves to nothing. tplById() quietly
+   falls back to db.templates[0] in both cases, so every such lead copies the
+   exact same template on send, with nothing that looks like a bug — and
+   replacing your starter templates with your own puts every existing lead in
+   the second case at once. Treat "no template" and "template that's gone"
+   the same: give the lead its place in the rotation, oldest first, so
+   existing queues start rotating again. Returns how many leads moved. */
+function tplExists(id){ return !!(id && db.templates.some(t => t.id === id)); }
 function backfillTplRotation(){
-  if(!db.settings.rotateTemplates || !db.templates.length) return;
-  db.leads
-    .filter(l => !l.tplId)
-    .sort((a,b) => a.created - b.created)
-    .forEach(l => { l.tplId = nextRotatedTplId(); touch(l); });
+  if(!db.settings.rotateTemplates || !db.templates.length) return 0;
+  const stale = db.leads.filter(l => !tplExists(l.tplId));
+  stale.sort((a,b) => a.created - b.created)
+       .forEach(l => { l.tplId = nextRotatedTplId(); touch(l); });
+  return stale.length;
 }
 
 /* ============================== sending ============================== */
@@ -2417,6 +2424,7 @@ function openTemplates(){
       db.templates = db.templates.filter(t => t.id !== id);
       db.deletedTemplates.push(id);
       if(db.settings.tplId === id) db.settings.tplId = db.templates[0].id;
+      backfillTplRotation();   // leads on the deleted template rejoin the rotation now, not on next boot
       save(); openTemplates(); renderList();
     }
   });
@@ -3385,7 +3393,10 @@ let syncTimer = null, syncing = false;
 async function refreshFromCloud(){
   if(!CLOUD_ON || !cloudUser || syncing) return;
   syncing = true;
-  try{ await pullFromCloud(); backfillTplRotation(); persistLocal(); renderAll(); }
+  // save() rather than persistLocal() when the backfill actually moved leads,
+  // so the new assignments reach the cloud instead of every device redoing
+  // them (differently) after its own pull.
+  try{ await pullFromCloud(); if(backfillTplRotation()) save(); else persistLocal(); renderAll(); }
   finally{ syncing = false; }
 }
 function startPeriodicSync(){
