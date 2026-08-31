@@ -1425,10 +1425,7 @@ function mergeLeads(incoming){
       n.tags.forEach(t => { if(!hit.tags.includes(t)){ hit.tags.push(t); changed = true; } });
       if(changed){ touch(hit); updated++; } else dupes++;
     } else {
-      if(db.settings.rotateTemplates && db.templates.length && !n.tplId){
-        n.tplId = db.templates[db.settings.tplRotationIndex % db.templates.length].id;
-        db.settings.tplRotationIndex = (db.settings.tplRotationIndex + 1) % db.templates.length;
-      }
+      if(db.settings.rotateTemplates && db.templates.length && !n.tplId) n.tplId = nextRotatedTplId();
       db.leads.push(n);
       if(n.xid) byId.set(n.xid, n);
       if(n.handle) byHandle.set(n.handle.toLowerCase(), n);
@@ -1437,6 +1434,24 @@ function mergeLeads(incoming){
   }
   save();
   return {added, updated, dupes};
+}
+function nextRotatedTplId(){
+  const t = db.templates[db.settings.tplRotationIndex % db.templates.length];
+  db.settings.tplRotationIndex = (db.settings.tplRotationIndex + 1) % db.templates.length;
+  return t.id;
+}
+/* Leads that predate template rotation — already in the queue from before
+   this shipped, or synced down from another device's older version — sit on
+   tplId:null forever. currentTpl() quietly resolves that to the single
+   global default, so every one of them copies the exact same template on
+   send, with nothing that looks like a bug. Give any such lead its place in
+   the rotation once, oldest first, so existing queues start rotating too. */
+function backfillTplRotation(){
+  if(!db.settings.rotateTemplates || !db.templates.length) return;
+  db.leads
+    .filter(l => !l.tplId)
+    .sort((a,b) => a.created - b.created)
+    .forEach(l => { l.tplId = nextRotatedTplId(); touch(l); });
 }
 
 /* ============================== sending ============================== */
@@ -2987,6 +3002,7 @@ function applyTheme(){
 
 function startApp(){
   if(!db.settings.tplId && db.templates.length) db.settings.tplId = db.templates[0].id;
+  backfillTplRotation();
   save();
   applyTheme();
   renderAll();
@@ -3369,7 +3385,7 @@ let syncTimer = null, syncing = false;
 async function refreshFromCloud(){
   if(!CLOUD_ON || !cloudUser || syncing) return;
   syncing = true;
-  try{ await pullFromCloud(); persistLocal(); renderAll(); }
+  try{ await pullFromCloud(); backfillTplRotation(); persistLocal(); renderAll(); }
   finally{ syncing = false; }
 }
 function startPeriodicSync(){
