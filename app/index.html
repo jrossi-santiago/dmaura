@@ -381,7 +381,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 .fun .vv{width:74px;flex:none;text-align:right;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 .fun .vv b{color:var(--ink)}
 
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:var(--ground);padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:560;z-index:80;opacity:0;pointer-events:none;transition:all .2s ease;max-width:92vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:var(--ground);padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:560;z-index:100;opacity:0;pointer-events:none;transition:all .2s ease;max-width:92vw;text-align:center}
 .toast .undo{pointer-events:auto;cursor:pointer;color:var(--send);margin-left:10px;text-decoration:underline;text-underline-offset:3px;padding:2px 4px}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .booting{position:fixed;inset:0;z-index:95;background:var(--ground);display:grid;place-items:center;color:var(--muted);font-size:14px;padding:24px;text-align:center}
@@ -1000,13 +1000,13 @@ function fixCaps(s){
 function plural(n, one, many){ return n===1 ? one : (many||one+"s"); }
 
 let toastT, toastUndo = null;
-function toast(msg, undo, label){
+function toast(msg, undo, label, ms){
   const t = $("#toast");
   toastUndo = undo || null;
   t.innerHTML = esc(msg) + (undo ? ` <b class="undo">${esc(label||"Undo")}</b>` : "");
   t.classList.add("on");
   clearTimeout(toastT);
-  toastT = setTimeout(() => { t.classList.remove("on"); toastUndo = null; }, undo ? 6000 : 2600);
+  toastT = setTimeout(() => { t.classList.remove("on"); toastUndo = null; }, ms || (undo ? 6000 : 2600));
 }
 $("#toast").addEventListener("click", e => {
   if(!toastUndo || !e.target.closest(".undo")) return;
@@ -3169,7 +3169,7 @@ if(CLOUD_ON){
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
       if(error) throw error;
       authError(null);
-      toast("Check your inbox for a reset link");
+      toast("Check your inbox — we sent a password reset link to " + email, null, null, 5000);
     }catch(e){
       authError(e.message || "Couldn't send that — try again in a moment.");
     }finally{

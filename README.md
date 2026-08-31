@@ -448,8 +448,21 @@ setting only affects signup, not password recovery). Clicking the link
 brings someone back to the app with a recovery session; the app detects
 Supabase's `PASSWORD_RECOVERY` auth event and shows a "set a new password"
 screen instead of dropping them straight into whatever account that link's
-session belongs to. Nothing to configure — this uses Supabase's default
-email sending, which is already active on every project.
+session belongs to.
+
+**One thing that does need configuring, and won't error — it'll just send
+people to the wrong place:** Supabase only honors `resetPasswordForEmail`'s
+`redirectTo` if it matches **Authentication → URL Configuration → Redirect
+URLs** in the dashboard; otherwise it silently falls back to whatever **Site
+URL** is set to, which defaults to `http://localhost:3000` on a fresh
+project. On this repo's project that default was still in place — every
+reset link pointed at `localhost:3000` until it got fixed via the
+Management API (`PATCH /v1/projects/{ref}/config/auth` with `site_url` and
+`uri_allow_list`). Doing it from the dashboard instead: **Site URL** →
+`https://yourdomain.com/app/`; **Redirect URLs** → add
+`https://yourdomain.com/app/**` (and `http://localhost:8000/**` if you test
+locally per "Running it" above). No code change needed either way — this is
+purely a Supabase project setting, separate from anything in this repo.
 
 Existing local (pre-login) data on a device is **not** auto-migrated into a
 new cloud account — sign in first on a fresh browser/profile, or use
