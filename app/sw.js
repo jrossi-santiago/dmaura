@@ -1,6 +1,6 @@
 // Cache-first for the shell so the sheet opens with no signal. Bump CACHE
 // on every deploy; the old one is dropped on activate.
-const CACHE = "dmaura-v11";
+const CACHE = "dmaura-v12";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./config.js"];
 
 self.addEventListener("install", e => {
