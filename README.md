@@ -800,9 +800,9 @@ gets called.
 
 ## Known issues / planned improvements
 
-Things a review of the payment and account flow turned up. Three are now
-fixed (kept here, struck through, so the history of what was wrong isn't
-lost); one is still open, left alone on purpose.
+Things a review of the payment and account flow turned up. All four have
+been addressed (kept here, struck through, so the history of what was
+wrong isn't lost) — one only partially, see its note below.
 
 - ~~**Failed renewals have no dunning and no visible signal.**~~ **Fixed.**
   `stripe-webhook` now handles `invoice.payment_failed` (flags
@@ -822,12 +822,19 @@ lost); one is still open, left alone on purpose.
   again** button instead of the normal pick-a-plan paywall, so a
   currently-paying customer hitting a transient Supabase blip never sees
   something that reads like "you haven't paid."
-- **No protection against repeated free trials.** Cancel, sign up again with
-  a fresh email (a `+alias@gmail.com` costs nothing), get another 5-day
-  trial. **Left alone for now, on purpose** — low priority pre-launch;
-  worth Stripe's `subscription_data.trial_settings` (or an "have they ever
-  had a subscription" check before granting a trial) before any real
-  marketing push.
+- ~~**No protection against repeated free trials.**~~ **Partially fixed.**
+  `create-checkout-session` now checks the caller's own `paid_customers`
+  row (any status — RLS already scopes the select to their own row, no
+  service-role key needed) before setting `trial_period_days`; an account
+  that's had one before is charged immediately on resubscribing instead of
+  getting another 5-day trial. **This only stops the same-account case**
+  (cancel, then resubscribe without creating a new login) — it does
+  *nothing* against the original example, a fresh `+alias@gmail.com` each
+  time, since that's a brand-new Supabase account with no prior row by
+  definition. Closing that gap needs a check against Stripe itself (e.g.
+  normalizing the email before `stripe.customers.list({ email })`, or a
+  card-fingerprint check via Stripe Radar) — meaningfully more work than
+  this pass, and still not built.
 - ~~**The `index.html` / `landing/index.html` / `waitlist/index.html`
   situation.**~~ **Fixed** — repo owner deleted both `landing/index.html`
   (the duplicate) and `waitlist/index.html` (the orphaned old page)
