@@ -500,6 +500,13 @@ Checkout session server-side, and Stripe's **webhook** calls a second Edge
 Function when money actually moves, which is what flips the account to
 paid. Both functions live in `supabase/functions/` in this repo.
 
+`startCheckoutFromApp` also forwards the `datafast_visitor_id` and
+`datafast_session_id` cookies (set by `scripts/tracking.js`) to
+`create-checkout-session`, which puts them in the Checkout session's
+`metadata` — that's all DataFast needs to attribute the resulting revenue
+back to a marketing channel, no webhook required. If you change
+`create-checkout-session`, redeploy it (step 6) for this to take effect.
+
 ### 1. Create the products in Stripe
 
 Stripe dashboard → **Product catalog → Add product**, twice:

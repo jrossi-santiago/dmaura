@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { plan, email, successUrl, cancelUrl } = await req.json();
+    const { plan, email, successUrl, cancelUrl, datafastVisitorId, datafastSessionId } = await req.json();
     const priceId = PRICE_IDS[plan];
     if (!priceId) {
       return new Response(JSON.stringify({ error: "unknown plan" }), {
@@ -69,7 +69,14 @@ Deno.serve(async (req) => {
         // "monthly" ones are left alone to keep billing normally.
         metadata: { plan },
       },
-      metadata: { plan },
+      // datafast_visitor_id/datafast_session_id (from the DataFast cookies,
+      // forwarded by the client) are how DataFast attributes this revenue
+      // back to a marketing channel — see README "Payments (Stripe)".
+      metadata: {
+        plan,
+        ...(datafastVisitorId ? { datafast_visitor_id: datafastVisitorId } : {}),
+        ...(datafastSessionId ? { datafast_session_id: datafastSessionId } : {}),
+      },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

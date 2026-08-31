@@ -2951,6 +2951,13 @@ async function isPaidAccount(allowRetry){
   }
   return false;
 }
+// DataFast sets these two cookies (via scripts/tracking.js) to identify the
+// visitor/session; forwarding them into Stripe metadata is what lets DataFast
+// attribute the resulting revenue back to a marketing channel.
+function readCookie(name){
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
 async function startCheckoutFromApp(plan, btn){
   const label = btn.textContent;
   $$("#payScreen .btn").forEach(b => b.disabled = true);
@@ -2967,7 +2974,9 @@ async function startCheckoutFromApp(plan, btn){
         plan,
         email: cloudUser ? cloudUser.email : undefined,
         successUrl: location.origin + location.pathname + "?checkout=success",
-        cancelUrl: location.origin + location.pathname
+        cancelUrl: location.origin + location.pathname,
+        datafastVisitorId: readCookie("datafast_visitor_id"),
+        datafastSessionId: readCookie("datafast_session_id")
       })
     });
     const data = await res.json();
