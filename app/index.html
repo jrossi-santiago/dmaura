@@ -717,6 +717,7 @@ function blank(){
       question:"how are you handling outbound right now?",
       dailyGoal:20, dailyCap:60, paceSeconds:0,
       theme:"auto", tplId:null, openInApp:false, autoCopy:true,
+      rotateTemplates:true, tplRotationIndex:0,
       onboarded:false, onboardGoal:"", onboardSource:"", updated:0
     }
   };
@@ -1289,6 +1290,10 @@ function mergeLeads(incoming){
       n.tags.forEach(t => { if(!hit.tags.includes(t)){ hit.tags.push(t); changed = true; } });
       if(changed){ touch(hit); updated++; } else dupes++;
     } else {
+      if(db.settings.rotateTemplates && db.templates.length && !n.tplId){
+        n.tplId = db.templates[db.settings.tplRotationIndex % db.templates.length].id;
+        db.settings.tplRotationIndex = (db.settings.tplRotationIndex + 1) % db.templates.length;
+      }
       db.leads.push(n);
       if(n.xid) byId.set(n.xid, n);
       if(n.handle) byHandle.set(n.handle.toLowerCase(), n);
@@ -2657,6 +2662,8 @@ function openSettings(){
         <span class="nm"><b>Copy on send</b><span>Message goes to the clipboard too, as a safety net</span></span></label>
       <label class="row"><input type="checkbox" data-s="openInApp" ${s.openInApp?"checked":""} />
         <span class="nm"><b>Open in the X app</b><span>Uses twitter:// links. Only if the app is installed</span></span></label>
+      <label class="row"><input type="checkbox" data-s="rotateTemplates" ${s.rotateTemplates?"checked":""} />
+        <span class="nm"><b>Rotate templates on import</b><span>New leads cycle through your templates in order — lead 1 gets template 1, lead 2 gets template 2, looping back once it runs out — so replies split evenly for a fair A/B read</span></span></label>
     </div>
 
     <div class="section">Look</div>
