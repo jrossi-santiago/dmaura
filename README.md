@@ -716,12 +716,19 @@ Dashboard → **Developers → Webhooks → Add endpoint**:
 
 - **Endpoint URL**: the `stripe-webhook` URL printed in step 6.
 - **Events to send**: `checkout.session.completed`,
-  `invoice.payment_succeeded`, and `customer.subscription.deleted` —
-  respectively: grants access as soon as checkout completes (trial or not),
-  settles-and-cancels a `lifetime` subscription right after its one real
-  charge, and revokes access when a `monthly` subscription actually gets
-  canceled (a `lifetime` cancellation triggered by the settle-and-cancel
-  step above is recognized via its `lifetime_settled` metadata and ignored).
+  `invoice.payment_succeeded`, `invoice.payment_failed`, and
+  `customer.subscription.deleted` — respectively: grants access as soon as
+  checkout completes (trial or not); settles-and-cancels a `lifetime`
+  subscription right after its one real charge, and clears any `past_due`
+  flag a prior failed renewal left behind; flags the account `past_due` (see
+  the "Failed renewals" note below — access isn't cut off yet, just
+  flagged) the moment a renewal charge fails; and revokes access when a
+  `monthly` subscription actually gets canceled (a `lifetime` cancellation
+  triggered by the settle-and-cancel step above is recognized via its
+  `lifetime_settled` metadata and ignored). **If this project's webhook
+  endpoint already existed before `invoice.payment_failed` was added here,
+  go back and add that one event to it** — the code won't see failed
+  renewals until Stripe is told to send them.
 
 After creating it, open the endpoint and copy its **Signing secret**
 (`whsec_...`), then add the piece from step 4 that was still missing:
@@ -776,6 +783,29 @@ still `active` afterward) and check the subscription's status in the
 dashboard: `monthly` should read `active`, `lifetime` should read
 `canceled` with exactly one paid invoice.
 
+### Failed renewals (past_due)
+
+A `monthly` renewal charge can fail (expired card, insufficient funds) —
+Stripe doesn't cancel the subscription right away, it retries on its own
+schedule (Smart Retries) for days first. `stripe-webhook` now listens for
+`invoice.payment_failed` and flags the row `paid_customers.status =
+'past_due'` the moment that happens; `isPaidAccount()` in `app/index.html`
+still treats `past_due` as paid (access isn't cut off — only an actual
+`customer.subscription.deleted` does that), but a thin banner appears at
+the top of the app ("Your last payment failed — Update your card") that
+opens the billing portal from **Settings → Billing → Manage**. If a retry
+lands (or the customer updates their card and Stripe bills again),
+`invoice.payment_succeeded` flips the row back to `active` and the banner
+disappears next time the app loads.
+
+To test: with a test clock (see above), attach a test card known to fail
+(e.g. `4000 0000 0000 0341`, which succeeds at initial checkout but fails
+on the next charge) or just call `stripe.subscriptions.update` /
+`invoices.pay` against a real failing card in test mode, then check
+**Developers → Webhooks → recent deliveries** for `invoice.payment_failed`
+and confirm `paid_customers.status` flips to `past_due` and the app shows
+the banner on next load.
+
 ### Gift-card promo (optional)
 
 `app/index.html` has a small floating widget (top-right, wide viewports
@@ -800,35 +830,34 @@ gets called.
 
 ## Known issues / planned improvements
 
-Things a review of the payment and account flow turned up that are real but
-not urgent enough to have blocked the fixes above. Roughly ranked, most
-important first:
+Things a review of the payment and account flow turned up. Two are now
+fixed (kept here, struck through, so the history of what was wrong isn't
+lost); two are still open.
 
-- **Failed renewals have no dunning and no visible signal.** The webhook
-  listens for `checkout.session.completed`, `invoice.payment_succeeded`, and
-  `customer.subscription.deleted` — nothing for `invoice.payment_failed`.
-  When a monthly card declines at renewal, Stripe's Smart Retries run for
-  days before it gives up and cancels the subscription (which is what
-  finally revokes access via `customer.subscription.deleted`) — so a
-  customer with a dead card keeps full access for that whole retry window,
-  with no "update your card" nudge anywhere. Fix: handle
-  `invoice.payment_failed`, set `paid_customers.status = 'past_due'` (the
-  column already allows it), and show a small banner in the app pointing at
-  **Settings → Billing → Manage**.
-- **`isPaidAccount()` can't tell "confirmed unpaid" from "couldn't check."**
-  On any visit that didn't just come from Stripe checkout, it tries once
-  (`app/index.html`, `isPaidAccount`); a thrown error (a brief Supabase
-  outage, a network blip) is caught and treated exactly like "not paid." A
-  currently-paying customer who loads the app during that kind of hiccup
-  sees the paywall. The "Already paid? Refresh this page" link covers most
-  of this in practice, but the two cases are still indistinguishable in code
-  — worth splitting so an error shows a different, less alarming message
-  than "pick a plan."
+- ~~**Failed renewals have no dunning and no visible signal.**~~ **Fixed.**
+  `stripe-webhook` now handles `invoice.payment_failed` (flags
+  `paid_customers.status = 'past_due'`) and clears it back to `active` on
+  the next successful `invoice.payment_succeeded`; the app shows a banner
+  pointing at **Settings → Billing → Manage** while `past_due`. See
+  "Failed renewals (past_due)" above. Requires `invoice.payment_failed` to
+  actually be added to the Stripe webhook endpoint's subscribed events
+  (step 7) — added to these instructions, but **an existing webhook
+  endpoint from before this fix won't pick it up on its own; add the event
+  to it by hand in the Stripe dashboard.**
+- ~~**`isPaidAccount()` can't tell "confirmed unpaid" from "couldn't
+  check."**~~ **Fixed.** It now returns `"active" | "past_due" | "unpaid" |
+  "error"` instead of a boolean, and only the *last* retry's outcome
+  decides `"error"` vs `"unpaid"` — a `showPaywall("error")` state shows a
+  distinct "we couldn't check your payment status" message with a **Try
+  again** button instead of the normal pick-a-plan paywall, so a
+  currently-paying customer hitting a transient Supabase blip never sees
+  something that reads like "you haven't paid."
 - **No protection against repeated free trials.** Cancel, sign up again with
   a fresh email (a `+alias@gmail.com` costs nothing), get another 5-day
-  trial. Low priority pre-launch; worth Stripe's `subscription_data.trial_settings`
-  (or an "have they ever had a subscription" check before granting a trial)
-  before any real marketing push.
+  trial. **Left alone for now, on purpose** — low priority pre-launch;
+  worth Stripe's `subscription_data.trial_settings` (or an "have they ever
+  had a subscription" check before granting a trial) before any real
+  marketing push.
 - **The `index.html` / `landing/index.html` / `waitlist/index.html`
   situation** described at the top of this file — pick one live story
   (waitlist-only, or pricing/checkout live) and delete the duplicate.

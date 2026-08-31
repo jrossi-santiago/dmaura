@@ -25,9 +25,21 @@
 // somehow missing client_reference_id) falls back to the old email match so
 // nothing in flight during the rollout breaks.
 //
+// invoice.payment_failed flips the row to status: 'past_due' instead of
+// leaving it 'active' with no signal — Stripe's own retries can take days
+// before it gives up and fires customer.subscription.deleted, and until
+// then the app has no way to know a renewal is failing. The app shows a
+// small "update your card" banner for a past_due account (see
+// app/index.html, renderApp()/PAST_DUE banner). A later successful invoice
+// (a retry that lands, or a manually updated card) flips it back to
+// 'active' via invoice.payment_succeeded below, so this isn't a one-way trip.
+//
 // Deploy: supabase functions deploy stripe-webhook --project-ref <ref> --no-verify-jwt
 // Then in the Stripe dashboard, add an endpoint pointing at this function's
-// URL and copy its signing secret into STRIPE_WEBHOOK_SECRET.
+// URL and copy its signing secret into STRIPE_WEBHOOK_SECRET. Events to
+// send: checkout.session.completed, invoice.payment_succeeded,
+// invoice.payment_failed, customer.subscription.deleted — see README
+// "Payments (Stripe)" step 7.
 // Secrets this needs: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY. See README "Payments (Stripe)".
 import Stripe from "https://esm.sh/stripe@17.5.0?target=deno";
@@ -97,6 +109,15 @@ Deno.serve(async (req) => {
     const invoice = event.data.object as Stripe.Invoice;
     const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
     if (subscriptionId && invoice.amount_paid > 0) {
+      // A real charge landed — clear any past_due a previous failed
+      // attempt on this same subscription left behind. No-op if the row
+      // was already active.
+      const { error: activeErr } = await supabase
+        .from("paid_customers")
+        .update({ status: "active", updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", subscriptionId);
+      if (activeErr) console.error("paid_customers reactivate failed", activeErr);
+
       try {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         if (sub.metadata?.plan === "lifetime" && sub.status !== "canceled") {
@@ -108,6 +129,23 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.error("lifetime settle-and-cancel failed", err);
       }
+    }
+  }
+
+  // A renewal charge failed. Stripe will keep retrying on its own schedule
+  // for days before it finally gives up and fires customer.subscription.deleted
+  // — this is the only signal in between. Flip the row to past_due (an
+  // already-supported status, see the SQL in README) instead of leaving it
+  // silently 'active' with no way for anyone to know the card is dying.
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
+    if (subscriptionId) {
+      const { error } = await supabase
+        .from("paid_customers")
+        .update({ status: "past_due", updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", subscriptionId);
+      if (error) console.error("paid_customers past_due failed", error);
     }
   }
 
