@@ -431,6 +431,14 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 .giftcard-err.on{display:block}
 .giftcard-thanks{font-size:13px;line-height:1.5}
 .giftcard-thanks b{display:block;font-family:var(--serif);font-style:italic;font-size:19px;font-weight:400;margin-bottom:4px}
+.giftcard-confirm p{font-size:12.5px;line-height:1.45;color:var(--ink-2);margin:0 0 10px}
+.giftcard-confirm p b{color:var(--ink);font-weight:660}
+.giftcard-confirm-actions{display:flex;flex-direction:column;gap:7px}
+.giftcard-confirm-actions button{width:100%;padding:9px 10px;border-radius:9px;font-size:12.5px;font-weight:660}
+.giftcard-confirm-actions .yes{background:var(--violet);color:#fff}
+.giftcard-confirm-actions .yes:active{transform:scale(.97)}
+.giftcard-confirm-actions .yes:disabled{opacity:.6}
+.giftcard-confirm-actions .no{background:none;color:var(--muted);border:1px solid var(--line)}
 @media (max-width:1039px){ .giftcard{display:none !important} }
 .booting{position:fixed;inset:0;z-index:95;background:var(--ground);display:grid;place-items:center;color:var(--muted);font-size:14px;padding:24px;text-align:center}
 .auth{position:fixed;inset:0;z-index:96;background:var(--ground);display:grid;place-items:center;padding:24px}
@@ -603,9 +611,9 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
   <div class="giftcard" id="giftcard">
     <button type="button" class="giftcard-close" id="giftcardClose" aria-label="Dismiss">×</button>
     <div id="giftcardBody">
-      <span class="giftcard-emoji" aria-hidden="true">🛹</span>
-      <p class="giftcard-head">Free DoorDash?</p>
-      <p class="giftcard-sub">Try it, then tell me it sucks. Either way I'm sending an e-gift card.</p>
+      <span class="giftcard-emoji" aria-hidden="true">⚡</span>
+      <p class="giftcard-head">Free white Monster?</p>
+      <p class="giftcard-sub">Try it, then tell me it sucks. Either way I'm DoorDashing you one.</p>
       <form id="giftcardForm">
         <input type="email" id="giftcardEmail" placeholder="you@email.com" required autocomplete="email" inputmode="email" />
         <button type="submit" id="giftcardSubmit">Send it my way</button>
@@ -2940,10 +2948,13 @@ function startApp(){
 }
 
 /* ------------------------------ gift card promo ------------------------------
-   Fun little floating widget offering a DoorDash e-gift card for feedback —
-   posts straight to Formspree (GIFT_CARD_FORM_URL in config.js), no backend
-   of our own. Dismiss/claim state is per-browser via localStorage so it
-   doesn't nag someone who already closed it or already claimed. */
+   Fun little floating widget offering a gift card for feedback — posts
+   straight to Formspree (GIFT_CARD_FORM_URL in config.js), no backend of
+   our own. Claiming requires an explicit confirm step: it ends the caller's
+   trial right now (via the end-trial-now Edge Function, which really does
+   charge their card today through Stripe) before their email goes anywhere.
+   Dismiss/claim state is per-browser via localStorage so it doesn't nag
+   someone who already closed it or already claimed. */
 function initGiftCard(){
   const url = CLOUD_CFG.GIFT_CARD_FORM_URL;
   if(!url) return;
@@ -2957,36 +2968,68 @@ function initGiftCard(){
     el.classList.remove("show");
   });
 
-  $("#giftcardForm").addEventListener("submit", async e => {
-    e.preventDefault();
-    const emailInput = $("#giftcardEmail");
-    const email = emailInput.value.trim();
-    const errEl = $("#giftcardErr");
-    errEl.classList.remove("on");
-    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
-    const btn = $("#giftcardSubmit");
-    const label = btn.textContent;
-    btn.disabled = true; emailInput.disabled = true;
-    btn.textContent = "Sending…";
-    try{
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({
-          email,
-          message: "DM Aura gift card claim",
-          app_user_email: cloudUser ? cloudUser.email : undefined
-        })
-      });
-      if(!res.ok) throw new Error("bad response");
-      localStorage.setItem("dmaura_giftcard_dismissed", "1");
-      $("#giftcardBody").innerHTML = `<p class="giftcard-thanks"><b>Sent 🎉</b>Check that inbox in a bit — I read every reply.</p>`;
-    }catch(err){
-      errEl.classList.add("on");
-      btn.disabled = false; emailInput.disabled = false;
-      btn.textContent = label;
-    }
-  });
+  const formStepHTML = $("#giftcardBody").innerHTML;
+
+  function showFormStep(prefillEmail){
+    $("#giftcardBody").innerHTML = formStepHTML;
+    if(prefillEmail) $("#giftcardEmail").value = prefillEmail;
+    bindFormSubmit();
+  }
+
+  function showConfirmStep(email){
+    $("#giftcardBody").innerHTML = `
+      <div class="giftcard-confirm">
+        <p>Claiming this <b>ends your free trial right now</b> — you'll be charged today instead of on day 5. No undo.</p>
+        <div class="giftcard-confirm-actions">
+          <button type="button" class="yes" id="giftcardYes">Yes, end it &amp; send my Monster</button>
+          <button type="button" class="no" id="giftcardNo">Never mind</button>
+        </div>
+        <p class="giftcard-err" id="giftcardErr"></p>
+      </div>`;
+    $("#giftcardNo").addEventListener("click", () => showFormStep(email));
+    $("#giftcardYes").addEventListener("click", async () => {
+      const yesBtn = $("#giftcardYes"), noBtn = $("#giftcardNo"), errEl = $("#giftcardErr");
+      const yesLabel = yesBtn.textContent;
+      errEl.classList.remove("on"); errEl.textContent = "";
+      yesBtn.disabled = true; noBtn.disabled = true;
+      yesBtn.textContent = "Ending trial…";
+      try{
+        const endResult = await authedFetch("end-trial-now", {});
+        if(endResult && endResult.error) throw new Error(endResult.error);
+        yesBtn.textContent = "Sending…";
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({
+            email,
+            message: "DM Aura gift card claim — trial ended to claim",
+            app_user_email: cloudUser ? cloudUser.email : undefined
+          })
+        });
+        if(!res.ok) throw new Error("bad response");
+        localStorage.setItem("dmaura_giftcard_dismissed", "1");
+        $("#giftcardBody").innerHTML = `<p class="giftcard-thanks"><b>Sent 🎉</b>Check that inbox in a bit — I read every reply.</p>`;
+      }catch(err){
+        errEl.textContent = "Couldn't finish that — try again?";
+        errEl.classList.add("on");
+        yesBtn.disabled = false; noBtn.disabled = false;
+        yesBtn.textContent = yesLabel;
+      }
+    });
+  }
+
+  function bindFormSubmit(){
+    $("#giftcardForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const emailInput = $("#giftcardEmail");
+      const email = emailInput.value.trim();
+      const errEl = $("#giftcardErr");
+      errEl.classList.remove("on");
+      if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+      showConfirmStep(email);
+    });
+  }
+  bindFormSubmit();
 }
 
 function showAuth(){

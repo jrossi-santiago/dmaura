@@ -674,26 +674,28 @@ drop policy if exists insert_client_errors on client_errors;
 create policy insert_client_errors on client_errors for insert with check (true);
 ```
 
-### 6. Deploy the three functions
+### 6. Deploy the functions
 
 ```bash
 supabase functions deploy create-checkout-session --project-ref <your-project-ref>
 supabase functions deploy stripe-webhook --project-ref <your-project-ref> --no-verify-jwt
 supabase functions deploy create-billing-portal-session --project-ref <your-project-ref>
+supabase functions deploy end-trial-now --project-ref <your-project-ref>
 ```
 
 `--no-verify-jwt` on the webhook matters — Stripe calls it directly with a
 `stripe-signature` header, not a Supabase auth token, so the default
 JWT check would reject every event with 401 before your code ever runs.
-The other two keep the default check, but unlike an earlier version of this
+The others keep the default check, but unlike an earlier version of this
 setup, that check alone isn't what identifies the caller — the app now
 sends each signed-in user's *own* session token (not the anon key) as
-`Authorization`, and both functions verify it and read the user id off the
+`Authorization`, and each function verifies it and reads the user id off the
 verified session, never off anything the request body claims. No new
-secrets to set for the billing portal function — it reuses
-`STRIPE_SECRET_KEY` and `SUPABASE_SERVICE_ROLE_KEY` from step 4, plus
+secrets to set for the billing portal or end-trial-now functions — both
+reuse `STRIPE_SECRET_KEY` and `SUPABASE_SERVICE_ROLE_KEY` from step 4, plus
 `SUPABASE_URL`/`SUPABASE_ANON_KEY`, which the Edge Functions runtime injects
-into every function automatically.
+into every function automatically. `end-trial-now` only needs deploying if
+you're using the gift-card promo widget — see "Gift-card promo" below.
 
 Each deploy prints the function's URL, shaped like:
 
@@ -701,6 +703,7 @@ Each deploy prints the function's URL, shaped like:
 https://<your-project-ref>.supabase.co/functions/v1/create-checkout-session
 https://<your-project-ref>.supabase.co/functions/v1/stripe-webhook
 https://<your-project-ref>.supabase.co/functions/v1/create-billing-portal-session
+https://<your-project-ref>.supabase.co/functions/v1/end-trial-now
 ```
 
 Nothing in this repo needs editing for those URLs — every client-side
@@ -772,6 +775,26 @@ that should *not* touch `paid_customers` — confirm the row's `status` is
 still `active` afterward) and check the subscription's status in the
 dashboard: `monthly` should read `active`, `lifetime` should read
 `canceled` with exactly one paid invoice.
+
+### Gift-card promo (optional)
+
+`app/index.html` has a small floating widget (top-right, wide viewports
+only, see `.giftcard` / `initGiftCard()`) offering a gift card in exchange
+for feedback. It only ever renders once someone is inside `.app`, which —
+see `enterApp()`/`revealApp()` above — already requires a `paid_customers`
+row with `status: 'active'`, i.e. a trial already started with a card on
+file. Claiming it goes one step further: a confirmation step
+(`confirmEndTrial()`) makes the person explicitly acknowledge that
+submitting ends their trial and charges their card **today**, then calls
+the `end-trial-now` Edge Function (deployed in step 6 above) to actually do
+that via `stripe.subscriptions.update(..., { trial_end: "now" })`, before
+posting their email to [Formspree](https://formspree.io/) (set
+`GIFT_CARD_FORM_URL` in `config.js` to your form's endpoint — the widget
+never renders if it's blank).
+
+To turn this off entirely, leave `GIFT_CARD_FORM_URL` blank in
+`config.js` — no other code changes needed, and `end-trial-now` never
+gets called.
 
 ---
 
