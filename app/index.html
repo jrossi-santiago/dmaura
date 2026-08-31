@@ -1087,10 +1087,12 @@ $("#toast").addEventListener("click", e => {
 });
 
 function copyText(s){
-  try{
-    if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s);
-  }catch(e){}
-  // Older Safari on iOS: a throwaway textarea is still the only reliable path.
+  // Send buttons are <a target="_blank">, so the click that calls this also
+  // opens a new tab, which steals focus before navigator.clipboard's async
+  // permission check resolves — that makes writeText() reject silently.
+  // execCommand("copy") runs synchronously in the same gesture, so it lands
+  // the text before focus moves. Try it first, then layer the modern API
+  // on top as a best-effort upgrade (its failure no longer matters).
   try{
     const ta = document.createElement("textarea");
     ta.value = s; ta.setAttribute("readonly","");
@@ -1100,6 +1102,9 @@ function copyText(s){
     document.execCommand("copy");
     document.body.removeChild(ta);
   }catch(e){}
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try{ return navigator.clipboard.writeText(s).catch(()=>{}); }catch(e){}
+  }
   return Promise.resolve();
 }
 
