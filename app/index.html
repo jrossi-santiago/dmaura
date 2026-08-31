@@ -761,6 +761,26 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID()
       const r = Math.random()*16|0; return (c==="x"?r:(r&0x3|0x8)).toString(16);
     }));
 
+/* Deterministic id for a brand-new lead's natural key (numeric xid
+   preferred, else lowercased handle) instead of a random uid(). The same
+   contact imported on two devices before they've ever synced with each
+   other lands on the exact same id either way, so the cloud upsert (which
+   resolves conflicts by primary key) just updates one row instead of the
+   second device's random id colliding with the first's on the
+   leads_user_xid/leads_user_handle unique indexes — see mkLead() and
+   pushToCloud() below. Not cryptographic, just needs to spread bits enough
+   that two different natural keys don't collide within one user's list. */
+function hash32(str){
+  let h = 0x811c9dc5;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function natId(kind, key){
+  const s = kind + ":" + key;
+  const hex = [0,1,2,3].map(salt => hash32(salt + ":" + s).toString(16).padStart(8,"0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+}
+
 const STATUS = {
   queued:  {label:"Queued",    color:"var(--slate)"},
   sent:    {label:"DM sent",   color:"var(--send)"},
@@ -910,6 +930,7 @@ function save(){
   scheduleCloudPush();
 }
 function mkLead(o){
+  const hadId = !!(o && o.id);
   const l = Object.assign({
     id:uid(), xid:"", handle:"", name:"", bio:"", avatar:"", website:"", location:"",
     followers:0, following:0, tweets:0, verified:false,
@@ -918,6 +939,14 @@ function mkLead(o){
   }, o||{});
   l.handle = String(l.handle||"").replace(/^@/,"").trim();
   l.xid = String(l.xid||"").replace(/\D/g,"");
+  // Only a genuinely new lead (nothing hydrating it from local storage or
+  // the cloud already had an id) gets its id derived from its natural key —
+  // see natId() above. Hydration always passes a real id and must never
+  // have it recomputed out from under it.
+  if(!hadId){
+    if(l.xid) l.id = natId("x", l.xid);
+    else if(l.handle) l.id = natId("h", l.handle.toLowerCase());
+  }
   l.followers = +l.followers || 0;
   l.following = +l.following || 0;
   l.tweets = +l.tweets || 0;
@@ -981,7 +1010,14 @@ async function pushToCloud(){
     try{
       const { error } = await sb.from("leads").upsert(db.leads.map(l => leadToRow(l, uidc)));
       if(error) throw error;
-    }catch(e){ logClientError("pushToCloud leads: " + (e.message||e), e.stack); }
+    }catch(e){
+      logClientError("pushToCloud leads (batch): " + (e.message||e), e.stack);
+      // The batch failed as a whole — most likely one lead colliding with
+      // another device's already-synced copy of the same contact (an old,
+      // randomly-generated id from before natId() existed). Retry one row
+      // at a time so everything else in the batch still gets through.
+      await pushLeadsIsolated(uidc);
+    }
   }
   if(db.templates.length){
     try{
@@ -1021,6 +1057,62 @@ async function pushToCloud(){
 
   persistLocal();
 }
+
+/* Fallback for when the one-shot batch upsert above fails: push each lead
+   on its own so a single bad row can't block every other lead in the list
+   from reaching the cloud. */
+async function pushLeadsIsolated(uidc){
+  let healed = false;
+  for(const l of db.leads.slice()){
+    try{
+      const { error } = await sb.from("leads").upsert(leadToRow(l, uidc));
+      if(error) throw error;
+    }catch(e){
+      // 23505 = Postgres unique_violation: this row's xid/handle already
+      // exists in the cloud under a different id — reconcile instead of
+      // just logging and leaving it stuck forever.
+      if(e.code === "23505" && await reconcileDuplicateLead(l, uidc)) healed = true;
+      else logClientError("pushToCloud lead " + l.id + ": " + (e.message||e), e.stack);
+    }
+  }
+  // Reconciling can rename a lead's id in place — persist that and redraw
+  // so the sheet doesn't keep showing the pre-merge copy.
+  if(healed){ persistLocal(); if(typeof renderAll === "function") renderAll(); }
+}
+
+/* Heals a leads_user_xid/leads_user_handle collision: some other device
+   already pushed this same contact under a different (older, randomly
+   generated, pre-natId()) id. Adopt that row's id — whichever side has the
+   newer `updated` wins the fields, the loser's blanks fill any gaps the
+   winner left (same "fill gaps, never clobber" rule as a local CSV
+   re-import) — then push the merged row back under the shared id. Returns
+   the merged lead on success, or null if the conflicting row couldn't be
+   found (leaves the original row for the next push attempt to retry). */
+async function reconcileDuplicateLead(l, uidc){
+  let q = sb.from("leads").select("*").eq("user_id", uidc).neq("id", l.id);
+  q = l.xid ? q.eq("xid", l.xid) : q.ilike("handle", l.handle);
+  const { data, error } = await q.maybeSingle();
+  if(error || !data) return null;
+
+  const cloud = rowToLead(data);
+  const [winner, loser] = cloud.updated >= l.updated ? [cloud, l] : [l, cloud];
+  const merged = mkLead(Object.assign({}, winner, { id:data.id }));
+  ["name","bio","avatar","website","location","note","listName"].forEach(k => {
+    if(!merged[k] && loser[k]) merged[k] = loser[k];
+  });
+  loser.tags.forEach(t => { if(!merged.tags.includes(t)) merged.tags.push(t); });
+  touch(merged);
+
+  try{
+    const { error: upErr } = await sb.from("leads").upsert(leadToRow(merged, uidc));
+    if(upErr) throw upErr;
+  }catch(e){ logClientError("reconcileDuplicateLead upsert: " + (e.message||e), e.stack); return null; }
+
+  const idx = db.leads.indexOf(l);
+  if(idx !== -1) db.leads[idx] = merged;
+  return merged;
+}
+
 async function pullFromCloud(){
   if(!CLOUD_ON || !cloudUser) return;
   const uidc = cloudUser.id;

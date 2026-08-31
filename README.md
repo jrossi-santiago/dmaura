@@ -463,6 +463,25 @@ now-signed-in account.
   later save wins and the earlier one is overwritten. Fine for one person
   moving between their own phone and laptop; a true multi-editor tool would
   want Supabase Realtime subscriptions instead of polling.
+- A lead's row `id` isn't a random UUID — it's derived deterministically
+  from its numeric `xid` (or, lacking one, its lowercased `handle`) via
+  `natId()` in `app/index.html`. Importing the same contact on two devices
+  before they've ever synced with each other used to hand each device its
+  own random id for it; the second device's push then violated the
+  `leads_user_xid`/`leads_user_handle` unique indexes below, and — because
+  nothing checked `.error` on the Supabase call — failed *completely
+  silently*, blocking every other lead in that same batch from reaching the
+  cloud too, forever, with no visible symptom beyond "some of my leads never
+  show up on my other device." Deterministic ids mean that scenario can't
+  happen for newly-created leads anymore: both devices land on the same id
+  and the push is just an update. `pushToCloud()` also now checks `.error`
+  on every call (logging failures to `client_errors` instead of swallowing
+  them) and, if a batch upsert still fails, retries leads one at a time so a
+  single bad row can't take the rest down with it — and if that one row's
+  failure is a leftover collision from before this fix existed (an old,
+  randomly-generated id competing with another device's copy of the same
+  contact), `reconcileDuplicateLead()` merges the two under the
+  already-synced id automatically, healing it without any manual cleanup.
 
 ---
 
