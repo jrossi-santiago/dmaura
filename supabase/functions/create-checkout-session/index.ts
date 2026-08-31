@@ -1,7 +1,7 @@
-// Called from landing/index.html (anonymous) and app/index.html (signed in but
-// unpaid) to start a Stripe Checkout session. The client only ever picks a
-// plan name ("monthly" | "lifetime") — the actual Stripe Price id is resolved
-// here from an env var, so nobody can tamper with the request to pay less.
+// Called from app/index.html once someone is signed in but unpaid, to start
+// a Stripe Checkout session. The client only ever picks a plan name
+// ("monthly" | "lifetime") — the actual Stripe Price id is resolved here
+// from an env var, so nobody can tamper with the request to pay less.
 //
 // Both plans run through Checkout's subscription mode with a 5-day free
 // trial (Stripe requires a recurring Price for trials — there's no trial on
@@ -10,10 +10,24 @@
 // the webhook cancels that subscription right after its first real charge so
 // it never renews. See README "Payments (Stripe)" for the full explanation.
 //
+// Identity: the caller must send their own Supabase session access token as
+// the Authorization bearer (not the anon key) — this function verifies it
+// and reads the user id/email off the verified session itself, never off
+// anything the client claims in the request body. That id becomes Stripe's
+// client_reference_id, which the webhook uses as the *only* thing that maps
+// a completed payment back to an account. Before this, the webhook matched
+// on whatever email Stripe's own Checkout page had at the end — a field the
+// customer can freely edit there — so a card charged under an edited email
+// could pay successfully and never unlock the signed-in account it was
+// meant for. A UUID typed nowhere on Stripe's page can't have that problem.
+//
 // Deploy: supabase functions deploy create-checkout-session --project-ref <ref>
 // Secrets this needs (supabase secrets set ...): STRIPE_SECRET_KEY,
-// STRIPE_PRICE_MONTHLY, STRIPE_PRICE_LIFETIME. See README "Payments (Stripe)".
+// STRIPE_PRICE_MONTHLY, STRIPE_PRICE_LIFETIME. SUPABASE_URL and
+// SUPABASE_ANON_KEY are auto-injected by the Edge Functions runtime — no
+// need to set those. See README "Payments (Stripe)".
 import Stripe from "https://esm.sh/stripe@17.5.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-06-20",
@@ -35,7 +49,22 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { plan, email, successUrl, cancelUrl, datafastVisitorId, datafastSessionId } = await req.json();
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
+    if (userErr || !userData.user) {
+      return new Response(JSON.stringify({ error: "not signed in" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = userData.user.id;
+    const email = userData.user.email || undefined;
+
+    const { plan, successUrl, cancelUrl, datafastVisitorId, datafastSessionId } = await req.json();
     const priceId = PRICE_IDS[plan];
     if (!priceId) {
       return new Response(JSON.stringify({ error: "unknown plan" }), {
@@ -53,8 +82,11 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      customer_email: email || undefined,
-      client_reference_id: email || undefined,
+      customer_email: email,
+      // The authoritative link back to the signed-in account — see the note
+      // at the top of this file. Not the customer_email above, which Stripe
+      // lets the customer edit on the Checkout page itself.
+      client_reference_id: userId,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
@@ -67,13 +99,14 @@ Deno.serve(async (req) => {
         // Read back by the webhook: "lifetime" subscriptions get canceled
         // right after their one real invoice pays so they never renew;
         // "monthly" ones are left alone to keep billing normally.
-        metadata: { plan },
+        metadata: { plan, user_id: userId },
       },
       // datafast_visitor_id/datafast_session_id (from the DataFast cookies,
       // forwarded by the client) are how DataFast attributes this revenue
       // back to a marketing channel — see README "Payments (Stripe)".
       metadata: {
         plan,
+        user_id: userId,
         ...(datafastVisitorId ? { datafast_visitor_id: datafastVisitorId } : {}),
         ...(datafastSessionId ? { datafast_session_id: datafastSessionId } : {}),
       },

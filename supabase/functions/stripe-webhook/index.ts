@@ -15,6 +15,16 @@
 // (trial ended with a failed/absent charge, or a real "monthly" cancel)
 // still flips the row to canceled as before.
 //
+// checkout.session.completed keys the paid_customers row off
+// session.client_reference_id — the Supabase user id create-checkout-session
+// stamped onto the session before redirecting to Stripe — not off
+// session.customer_details.email. Stripe lets the customer edit that email
+// on its own Checkout page, so matching on it could grant a payment to the
+// wrong account or, worse, lose it if what they typed doesn't match any
+// signed-in account at all. A session from before this change (or one
+// somehow missing client_reference_id) falls back to the old email match so
+// nothing in flight during the rollout breaks.
+//
 // Deploy: supabase functions deploy stripe-webhook --project-ref <ref> --no-verify-jwt
 // Then in the Stripe dashboard, add an endpoint pointing at this function's
 // URL and copy its signing secret into STRIPE_WEBHOOK_SECRET.
@@ -57,23 +67,27 @@ Deno.serve(async (req) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const email = (session.customer_details?.email || session.customer_email || "").toLowerCase();
+    const userId = session.client_reference_id || session.metadata?.user_id || null;
     const plan = session.metadata?.plan === "lifetime" ? "lifetime" : "monthly";
-    if (email) {
-      // Trial or not, the card is already captured at this point — grant
-      // access immediately rather than waiting for the trial to end.
-      const { error } = await supabase.from("paid_customers").upsert(
-        {
-          email,
-          stripe_customer_id: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
-          stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null,
-          plan,
-          status: "active",
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "email" },
-      );
-      if (error) console.error("paid_customers upsert failed", error);
-    }
+    const row = {
+      email,
+      user_id: userId,
+      stripe_customer_id: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
+      stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null,
+      plan,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    };
+    // Prefer keying on the verified Supabase user id (see the note at the
+    // top of this file). Only a session with no client_reference_id at all
+    // — which shouldn't happen post-rollout — falls back to matching by
+    // whatever email ended up on the Checkout session.
+    const { error } = userId
+      ? await supabase.from("paid_customers").upsert(row, { onConflict: "user_id" })
+      : email
+      ? await supabase.from("paid_customers").upsert(row, { onConflict: "email" })
+      : { error: new Error("checkout.session.completed had neither client_reference_id nor an email") };
+    if (error) console.error("paid_customers upsert failed", error);
   }
 
   // Fires for every paid invoice on a subscription, including the $0 invoice

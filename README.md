@@ -1,20 +1,36 @@
 # DM Aura
 
-A waitlist site and the tool behind it.
+A pricing/landing site and the tool behind it — plus an older waitlist page
+that's still in the repo but no longer linked from anywhere live.
 
 ```
-index.html            the early-access page — waitlist capture, posts to Formspree
+index.html            pricing + landing page — currently byte-identical to landing/index.html (see note below)
+landing/index.html    the same pricing + landing page
+waitlist/index.html   the original early-access page — waitlist capture, posts to Formspree — orphaned, nothing links here
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
   admin/index.html    trial activation dashboard (see "Admin" section below)
   sw.js               service worker, cache-first shell (bump CACHE on deploy)
   manifest.webmanifest, icon.svg, icon-*.png   paper-plane mark on cobalt
   sample-leads.csv    example import, including rows with no numeric id
+scripts/tracking.js   third-party tracking scripts (DataFast), loaded by every page above
 ```
 
 Both halves are static and dependency-free. Drop the folder on any host: `/`
-serves the waitlist, `/app/` serves the tool. Everything under `app/` uses
-relative paths, so it runs from any prefix without configuration.
+serves the landing/pricing page, `/app/` serves the tool. Everything under
+`app/` uses relative paths, so it runs from any prefix without configuration.
+
+**File-layout note (as of the last README pass):** `index.html` and
+`landing/index.html` are currently exact duplicates — same pricing copy,
+same "Start free trial" buttons pointing at `/app/?plan=...`. The page that
+actually does waitlist capture (Formspree, the `_gotcha` honeypot, the "join
+early access" copy) now lives only at `waitlist/index.html`, which nothing
+on the live site links to. If the product is still meant to be waitlist-only
+before a public pricing push, point `index.html` back at the waitlist and
+drop the duplicate; if pricing is meant to be the front door now, delete one
+of the two identical copies and redirect the other. Either is a five-minute
+fix — it just hasn't been made yet, so right now a visitor to `/` lands on
+a page that sends them straight into Stripe Checkout.
 
 ## The waitlist page
 
@@ -425,6 +441,16 @@ else who does the same gets their own empty sheet; RLS keeps every user's
 leads, templates, and settings walled off from everyone else's at the
 database level, not just in the UI.
 
+**Forgot password:** on the **Sign in** tab, "Reset it" calls
+`sb.auth.resetPasswordForEmail()`, which emails a link through Supabase's
+built-in email sending (works even with email confirmation off — that
+setting only affects signup, not password recovery). Clicking the link
+brings someone back to the app with a recovery session; the app detects
+Supabase's `PASSWORD_RECOVERY` auth event and shows a "set a new password"
+screen instead of dropping them straight into whatever account that link's
+session belongs to. Nothing to configure — this uses Supabase's default
+email sending, which is already active on every project.
+
 Existing local (pre-login) data on a device is **not** auto-migrated into a
 new cloud account — sign in first on a fresh browser/profile, or use
 **Settings → Backup → Restore** to bring an old JSON export into the
@@ -458,13 +484,19 @@ now-signed-in account.
 
 ## Payments (Stripe)
 
-**Status: live in test mode.** Steps 1–7 below have already been run
-against this repo's Supabase project (`fkregyidgjovkzujcslw`) with a Stripe
-**test** key — the two Prices, the `paid_customers` table, both Edge
-Functions, and the webhook are all deployed. What's left is testing an
-actual purchase (step 8) and, when ready, swapping in a `sk_live_...` key
-and a second live-mode webhook. Re-run these steps as-is if you ever need
-to point this at a different Supabase or Stripe project.
+**Status: live.** Steps 1–7 below have already been run against this repo's
+Supabase project (`fkregyidgjovkzujcslw`) — the two Prices, the
+`paid_customers` table, all three Edge Functions (checkout, webhook, billing
+portal), and the webhook are deployed. `STRIPE_SECRET_KEY` on that project
+is a **live** key (`sk_live_...`), confirmed by a smoke-tested Checkout
+session — this is *not* the test-mode setup an earlier version of this
+README described, so double-check in the Stripe dashboard that the webhook
+endpoint from step 7 is registered under **Live mode**, not Test mode, and
+that the two Prices from step 1 are the live-mode ones. Re-run these steps
+as-is if you ever need to point this at a different Supabase or Stripe
+project, or to add a second Test-mode setup for local development (a
+separate Stripe test key + a second webhook endpoint + `supabase secrets
+set --env-file` per environment, or just a second Supabase project).
 
 **Both plans include a 5-day free trial that auto-charges the card
 collected at checkout when the trial ends.** Stripe only supports trials on
@@ -481,24 +513,36 @@ one-time Price can stay around unused. Expect Stripe's dashboard to show a
 lifetime purchase as a subscription that went trialing → active → canceled
 after one invoice — that's expected, not a failed payment.
 
-The landing page's two pricing buttons (`landing/index.html`) are plain links
-to `app/?plan=monthly` or `app/?plan=lifetime` — checkout never starts
+The landing page's two pricing buttons (`landing/index.html`, and currently
+the identical `index.html` — see the file-layout note up top) are plain
+links to `app/?plan=monthly` or `app/?plan=lifetime` — checkout never starts
 anonymously. The app signs the person up (or in) first, and once they're
 authenticated it shows a paywall screen — instead of the leads sheet — to
 any signed-in account that hasn't paid, then immediately continues to
 Stripe Checkout for whichever plan they picked on the landing page
-(`requestedPlan` in `app/index.html`). That order — sign up, then pay, then
-the onboarding below — means the email Stripe records always matches the
-signed-in account, so the paid flag can never end up attached to a
-different email than the one someone actually logs in with. Requires the
-Supabase project from the section above; the paid/unpaid flag lives in
-Postgres, not in the browser, so it can't be spoofed from devtools.
+(`requestedPlan` in `app/index.html`). Requires the Supabase project from
+the section above; the paid/unpaid flag lives in Postgres, not in the
+browser, so it can't be spoofed from devtools.
+
+**The paid flag is keyed off the signed-in account's Supabase user id, not
+its email.** Earlier this matched on whatever email ended up on the Stripe
+Checkout session — but Stripe lets a customer edit that email right on its
+own payment page (a pre-filled field isn't a locked one), so someone who
+fixed a typo or used a different email there could pay successfully and
+never see their own account unlock. `create-checkout-session` now requires
+the caller's real Supabase session token (not the anon key) in
+`Authorization`, verifies it server-side, and stamps the verified user id
+onto the Checkout session as `client_reference_id`. The webhook reads that
+back and keys `paid_customers.user_id` off it — see the SQL and both
+functions' source comments for the full explanation.
 
 How it fits together: the browser never talks to Stripe's secret API
-directly — it calls a small Supabase **Edge Function** that creates the
-Checkout session server-side, and Stripe's **webhook** calls a second Edge
-Function when money actually moves, which is what flips the account to
-paid. Both functions live in `supabase/functions/` in this repo.
+directly. Three Supabase **Edge Functions** (`supabase/functions/`) do the
+server-side work: `create-checkout-session` starts a Checkout session,
+`stripe-webhook` is what Stripe calls when money actually moves — which is
+what flips the account to paid — and `create-billing-portal-session` opens
+Stripe's self-serve billing portal (update card, see invoices, cancel) for
+an already-paid account, from **Settings → Billing → Manage** in the app.
 
 `startCheckoutFromApp` also forwards the `datafast_visitor_id` and
 `datafast_session_id` cookies (set by `scripts/tracking.js`) to
@@ -506,6 +550,14 @@ paid. Both functions live in `supabase/functions/` in this repo.
 `metadata` — that's all DataFast needs to attribute the resulting revenue
 back to a marketing channel, no webhook required. If you change
 `create-checkout-session`, redeploy it (step 6) for this to take effect.
+
+**Crash reporting:** uncaught JS errors and rejected promises in
+`app/index.html` get inserted into a `client_errors` table (see the SQL
+below) instead of only showing up in one customer's console where nobody
+ever sees them — capped at 5 per pageload so a repeating error can't spam
+it. Nothing reads that table back through the API (insert-only RLS); check
+it from the SQL Editor, or swap in a real error tracker (Sentry etc.) later
+if volume grows past what a table can comfortably show you.
 
 ### 1. Create the products in Stripe
 
@@ -566,38 +618,80 @@ create table if not exists paid_customers (
   updated_at              timestamptz not null default now()
 );
 
+-- The actual account link — see "The paid flag is keyed off..." above.
+-- `email` stays purely informational (who to look up in Stripe/support);
+-- it's no longer what access is gated on.
+alter table paid_customers add column if not exists user_id uuid references auth.users on delete cascade;
+
+-- One-time backfill for rows written before this column existed.
+update paid_customers pc
+set user_id = u.id
+from auth.users u
+where pc.user_id is null and lower(pc.email) = lower(u.email);
+
+alter table paid_customers drop constraint if exists paid_customers_user_id_key;
+alter table paid_customers add constraint paid_customers_user_id_key unique (user_id);
+
 alter table paid_customers enable row level security;
 
--- A signed-in user may read only the row matching their own auth email —
--- nobody can see or list anyone else's paid status this way. Only the
--- webhook (via the service_role key, which bypasses RLS) ever writes here.
+-- A signed-in user may read only their own row, by user id (falls back to
+-- the old email match for any row a webhook redeploy hasn't touched yet —
+-- harmless once every row has a user_id, which the backfill above ensures).
+-- Only the webhook (via the service_role key, which bypasses RLS) ever
+-- writes here.
 drop policy if exists own_paid_status on paid_customers;
 create policy own_paid_status on paid_customers
-  for select using (lower(email) = lower(auth.email()));
+  for select using (auth.uid() = user_id or lower(email) = lower(auth.email()));
+
+-- Client-side crash reports (see "Crash reporting" above). Insert-only:
+-- the app can write its own error, nobody can read anyone's back out
+-- through the API — check this table from the SQL Editor instead.
+create table if not exists client_errors (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users on delete set null,
+  email      text,
+  message    text,
+  stack      text,
+  url        text,
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+alter table client_errors enable row level security;
+drop policy if exists insert_client_errors on client_errors;
+create policy insert_client_errors on client_errors for insert with check (true);
 ```
 
-### 6. Deploy the two functions
+### 6. Deploy the three functions
 
 ```bash
 supabase functions deploy create-checkout-session --project-ref <your-project-ref>
 supabase functions deploy stripe-webhook --project-ref <your-project-ref> --no-verify-jwt
+supabase functions deploy create-billing-portal-session --project-ref <your-project-ref>
 ```
 
 `--no-verify-jwt` on the webhook matters — Stripe calls it directly with a
 `stripe-signature` header, not a Supabase auth token, so the default
 JWT check would reject every event with 401 before your code ever runs.
-`create-checkout-session` keeps the default check; the landing page and app
-both call it with the public anon key, which is a valid Supabase JWT.
+The other two keep the default check, but unlike an earlier version of this
+setup, that check alone isn't what identifies the caller — the app now
+sends each signed-in user's *own* session token (not the anon key) as
+`Authorization`, and both functions verify it and read the user id off the
+verified session, never off anything the request body claims. No new
+secrets to set for the billing portal function — it reuses
+`STRIPE_SECRET_KEY` and `SUPABASE_SERVICE_ROLE_KEY` from step 4, plus
+`SUPABASE_URL`/`SUPABASE_ANON_KEY`, which the Edge Functions runtime injects
+into every function automatically.
 
 Each deploy prints the function's URL, shaped like:
 
 ```
 https://<your-project-ref>.supabase.co/functions/v1/create-checkout-session
 https://<your-project-ref>.supabase.co/functions/v1/stripe-webhook
+https://<your-project-ref>.supabase.co/functions/v1/create-billing-portal-session
 ```
 
-Nothing in this repo needs editing for those URLs — both client-side
-callers build them from `SUPABASE_URL` in `config.js`, which is already
+Nothing in this repo needs editing for those URLs — every client-side
+caller builds them from `SUPABASE_URL` in `config.js`, which is already
 set.
 
 ### 7. Point Stripe at the webhook
@@ -622,9 +716,22 @@ supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
 
 ### 8. Test it
 
-Use one of [Stripe's test cards](https://docs.stripe.com/testing) (e.g.
-`4242 4242 4242 4242`, any future expiry, any CVC) while `STRIPE_SECRET_KEY`
-is a `sk_test_...` key. Click a pricing button on `landing/index.html` — it
+**On this project, `STRIPE_SECRET_KEY` is already a live key** (see the
+Status note up top) — [Stripe's test cards](https://docs.stripe.com/testing)
+will simply be declined against it, they don't work against a live key.
+Don't try to force a test purchase through here. To test the full flow
+safely:
+
+- **Easiest:** temporarily `supabase secrets set STRIPE_SECRET_KEY=sk_test_xxx`
+  (and matching test-mode `STRIPE_PRICE_MONTHLY`/`STRIPE_PRICE_LIFETIME`,
+  `STRIPE_WEBHOOK_SECRET` for a test-mode webhook endpoint), redeploy the
+  three functions, test with `4242 4242 4242 4242`/any future expiry/any
+  CVC, then set the live values back and redeploy again.
+- **Or:** point a second Supabase project at Stripe test mode entirely (repeat
+  steps 1–7 there with `sk_test_...`) and use that for all future testing,
+  leaving this project's functions permanently on the live key.
+
+Whichever way you test: click a pricing button on `landing/index.html` — it
 takes you to `app/`, where you sign up (or sign in) first, then checkout
 starts on its own for the plan you picked. Complete it (Stripe still asks
 for a card even though $0 is due today — that's expected, it's what gets
@@ -635,9 +742,12 @@ lag slightly behind Stripe's own redirect) and the onboarding screen from
 the section below runs once before the leads sheet. Check
 **Developers → Webhooks → (your endpoint) → recent deliveries** in Stripe
 if it doesn't; a failed delivery there means the URL, `--no-verify-jwt`, or
-`STRIPE_WEBHOOK_SECRET` is off. Swap in your `sk_live_...` key (and set up
-a second, live-mode webhook endpoint) once you're ready to take real
-payments — Stripe test and live objects don't cross over automatically.
+`STRIPE_WEBHOOK_SECRET` is off.
+
+To test the billing portal: **Settings → Billing → Manage** in the app, once
+signed in on a paid account — it should open Stripe's hosted portal for that
+account's own subscription, where update-card/cancel/view-invoices all work
+without you touching the Stripe dashboard.
 
 To test the trial actually converting to a charge without waiting 5 real
 days, use a [Stripe test clock](https://docs.stripe.com/test-mode/test-clocks):
@@ -649,3 +759,40 @@ that should *not* touch `paid_customers` — confirm the row's `status` is
 still `active` afterward) and check the subscription's status in the
 dashboard: `monthly` should read `active`, `lifetime` should read
 `canceled` with exactly one paid invoice.
+
+---
+
+## Known issues / planned improvements
+
+Things a review of the payment and account flow turned up that are real but
+not urgent enough to have blocked the fixes above. Roughly ranked, most
+important first:
+
+- **Failed renewals have no dunning and no visible signal.** The webhook
+  listens for `checkout.session.completed`, `invoice.payment_succeeded`, and
+  `customer.subscription.deleted` — nothing for `invoice.payment_failed`.
+  When a monthly card declines at renewal, Stripe's Smart Retries run for
+  days before it gives up and cancels the subscription (which is what
+  finally revokes access via `customer.subscription.deleted`) — so a
+  customer with a dead card keeps full access for that whole retry window,
+  with no "update your card" nudge anywhere. Fix: handle
+  `invoice.payment_failed`, set `paid_customers.status = 'past_due'` (the
+  column already allows it), and show a small banner in the app pointing at
+  **Settings → Billing → Manage**.
+- **`isPaidAccount()` can't tell "confirmed unpaid" from "couldn't check."**
+  On any visit that didn't just come from Stripe checkout, it tries once
+  (`app/index.html`, `isPaidAccount`); a thrown error (a brief Supabase
+  outage, a network blip) is caught and treated exactly like "not paid." A
+  currently-paying customer who loads the app during that kind of hiccup
+  sees the paywall. The "Already paid? Refresh this page" link covers most
+  of this in practice, but the two cases are still indistinguishable in code
+  — worth splitting so an error shows a different, less alarming message
+  than "pick a plan."
+- **No protection against repeated free trials.** Cancel, sign up again with
+  a fresh email (a `+alias@gmail.com` costs nothing), get another 5-day
+  trial. Low priority pre-launch; worth Stripe's `subscription_data.trial_settings`
+  (or an "have they ever had a subscription" check before granting a trial)
+  before any real marketing push.
+- **The `index.html` / `landing/index.html` / `waitlist/index.html`
+  situation** described at the top of this file — pick one live story
+  (waitlist-only, or pricing/checkout live) and delete the duplicate.
