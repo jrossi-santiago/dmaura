@@ -2732,7 +2732,7 @@ function openTodaySent(){
       <div class="nm"><b>${esc(l.name || l.handle || "Unknown")}</b><span>${esc(when(d.at))} · ${snippet}</span></div>
       <button class="mini" data-openlead="${l.id}">Profile</button>
       <button class="mini" data-return="${l.id}" data-dm="${d.id}" title="Return to queue, unsent" aria-label="Return to queue, unsent">↺</button>
-      <button class="mini danger" data-del="${l.id}" title="Delete lead" aria-label="Delete lead">✕</button>
+      <button class="mini danger" data-del="${l.id}" data-dm="${d.id}" title="Remove from today's count" aria-label="Remove from today's count">✕</button>
     </div>`;
   }).join("") : `<p class="help" style="margin:4px 0">Nothing sent yet today.</p>`;
   modal("Sent today" + (list.length ? " (" + list.length + ")" : ""), `<div class="rows">${rows}</div>`,
@@ -2764,13 +2764,15 @@ function openTodaySent(){
     const delB = e.target.closest("[data-del]");
     if(delB){
       const l = leadById(delB.getAttribute("data-del")); if(!l) return;
-      if(!confirm("Delete " + (l.name || l.handle || "this lead") + "? This can't be undone.")) return;
-      const i = db.leads.indexOf(l);
-      db.leads.splice(i,1); db.deleted.push(l.id); save();
+      const dmId = delB.getAttribute("data-dm");
+      const i = l.dms.findIndex(x => x.id === dmId); if(i < 0) return;
+      const [gone] = l.dms.splice(i,1);
+      db.deletedDms.push(dmId);
+      touch(l); save();
       openTodaySent(); renderAll();
-      toast("Deleted " + (l.handle ? "@"+l.handle : "lead"), () => {
-        db.leads.splice(i,0,l); db.deleted = db.deleted.filter(x => x !== l.id); save();
-        openTodaySent(); renderAll();
+      toast("Removed from today's count", () => {
+        l.dms.push(gone); l.dms.sort((a,b)=>a.at-b.at);
+        touch(l); save(); openTodaySent(); renderAll();
       });
     }
   });
