@@ -788,6 +788,13 @@ let requestedPlan = (() => {
   return (p === "monthly" || p === "lifetime") ? p : null;
 })();
 
+/* ?mode=in arrives from the landing page's nav "Sign in" link, so a
+   returning customer lands on the Sign in tab instead of the Sign up one
+   the auth screen defaults to. Read once at load, same as requestedPlan
+   above — only affects the very first render of the auth screen, not a
+   later showAuth() (e.g. after signing out), which still defaults to Sign up. */
+const requestedMode = new URLSearchParams(location.search).get("mode") === "in" ? "in" : null;
+
 let db = blank();
 const cacheKey = () => KEY_PREFIX + (cloudUser ? cloudUser.id : "default");
 
@@ -3210,7 +3217,7 @@ if(CLOUD_ON){
   [$("#auFirst"), $("#auLast"), $("#auCompany"), $("#auEmail"), $("#auPass"), $("#auPass2")].forEach(el => el.addEventListener("keydown", e => {
     if(e.key === "Enter") doAuth();
   }));
-  setAuthMode("up");
+  setAuthMode(requestedMode || "up");
 
   $("#payMonthly").addEventListener("click", e => startCheckoutFromApp("monthly", e.currentTarget));
   $("#payLifetime").addEventListener("click", e => startCheckoutFromApp("lifetime", e.currentTarget));
