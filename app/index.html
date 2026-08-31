@@ -961,31 +961,65 @@ function rowToLead(r){
 }
 function persistLocal(){ try{ localStorage.setItem(cacheKey(), JSON.stringify(db)); }catch(e){} }
 
+/* Each resource gets its own try/catch: supabase-js *resolves* (doesn't
+   reject) on a database-level error like a unique-constraint violation, so
+   a naive `await sb.from(...).upsert(...)` with no `.error` check silently
+   no-ops on failure and falls through to whatever runs next. Leads carry
+   unique indexes on (user_id, xid) and (user_id, lower(handle)) that upsert's
+   default conflict target (the primary key, `id`) doesn't cover — e.g. the
+   same contact added on two devices before they'd synced each generates its
+   own local id, so the second device's push collides on xid/handle. Without
+   checking `.error` that failure vanished with nothing after it (templates,
+   profile, tombstones) ever running or being blocked by it — this both
+   surfaces the error (via logClientError) and keeps resources independent
+   so one failing doesn't take the others down with it. */
 async function pushToCloud(){
   if(!CLOUD_ON || !cloudUser) return;
   const uidc = cloudUser.id;
-  try{
-    if(db.leads.length) await sb.from("leads").upsert(db.leads.map(l => leadToRow(l, uidc)));
-    if(db.templates.length){
-      await sb.from("templates").upsert(db.templates.map(t => ({
+
+  if(db.leads.length){
+    try{
+      const { error } = await sb.from("leads").upsert(db.leads.map(l => leadToRow(l, uidc)));
+      if(error) throw error;
+    }catch(e){ logClientError("pushToCloud leads: " + (e.message||e), e.stack); }
+  }
+  if(db.templates.length){
+    try{
+      const { error } = await sb.from("templates").upsert(db.templates.map(t => ({
         id:t.id, user_id:uidc, name:t.name, body:t.body,
         updated_at:new Date(t.updated||Date.now()).toISOString()
       })));
-    }
-    await sb.from("profiles").upsert({
+      if(error) throw error;
+    }catch(e){ logClientError("pushToCloud templates: " + (e.message||e), e.stack); }
+  }
+  try{
+    const { error } = await sb.from("profiles").upsert({
       id:uidc, settings:db.settings, updated_at:new Date(db.settings.updated||Date.now()).toISOString()
     });
+    if(error) throw error;
+  }catch(e){ logClientError("pushToCloud profile: " + (e.message||e), e.stack); }
 
-    const tombstones = [
-      ...db.deleted.map(id => ({ id, user_id:uidc, kind:"lead", deleted_at:new Date().toISOString() })),
-      ...db.deletedTemplates.map(id => ({ id, user_id:uidc, kind:"template", deleted_at:new Date().toISOString() }))
-    ];
-    if(tombstones.length) await sb.from("tombstones").upsert(tombstones);
-    if(db.deleted.length) await sb.from("leads").delete().in("id", db.deleted);
-    if(db.deletedTemplates.length) await sb.from("templates").delete().in("id", db.deletedTemplates);
+  const tombstones = [
+    ...db.deleted.map(id => ({ id, user_id:uidc, kind:"lead", deleted_at:new Date().toISOString() })),
+    ...db.deletedTemplates.map(id => ({ id, user_id:uidc, kind:"template", deleted_at:new Date().toISOString() }))
+  ];
+  try{
+    if(tombstones.length){
+      const { error } = await sb.from("tombstones").upsert(tombstones);
+      if(error) throw error;
+    }
+    if(db.deleted.length){
+      const { error } = await sb.from("leads").delete().in("id", db.deleted);
+      if(error) throw error;
+    }
+    if(db.deletedTemplates.length){
+      const { error } = await sb.from("templates").delete().in("id", db.deletedTemplates);
+      if(error) throw error;
+    }
     db.deleted = []; db.deletedTemplates = [];
-    persistLocal();
-  }catch(e){ /* offline, or the SQL below hasn't been run yet — local copy is still safe */ }
+  }catch(e){ logClientError("pushToCloud tombstones/deletes: " + (e.message||e), e.stack); }
+
+  persistLocal();
 }
 async function pullFromCloud(){
   if(!CLOUD_ON || !cloudUser) return;
@@ -1030,7 +1064,11 @@ async function pullFromCloud(){
     if(prof && (+new Date(prof.updated_at) > (db.settings.updated||0))){
       db.settings = Object.assign(blank().settings, prof.settings||{}, {updated:+new Date(prof.updated_at)});
     }
-  }catch(e){ /* offline, or the SQL below hasn't been run yet — carry on with what's local */ }
+  }catch(e){
+    // Offline, or the SQL below hasn't been run yet — carry on with what's
+    // local, but log it so a real, recurring failure doesn't stay invisible.
+    logClientError("pullFromCloud: " + (e.message||e), e.stack);
+  }
 }
 
 /* ============================== helpers ============================== */
