@@ -2731,6 +2731,8 @@ function openTodaySent(){
       ${avatarHTML(l)}
       <div class="nm"><b>${esc(l.name || l.handle || "Unknown")}</b><span>${esc(when(d.at))} · ${snippet}</span></div>
       <button class="mini" data-openlead="${l.id}">Profile</button>
+      <button class="mini" data-return="${l.id}" data-dm="${d.id}" title="Return to queue, unsent" aria-label="Return to queue, unsent">↺</button>
+      <button class="mini danger" data-del="${l.id}" title="Delete lead" aria-label="Delete lead">✕</button>
     </div>`;
   }).join("") : `<p class="help" style="margin:4px 0">Nothing sent yet today.</p>`;
   modal("Sent today" + (list.length ? " (" + list.length + ")" : ""), `<div class="rows">${rows}</div>`,
@@ -2738,10 +2740,39 @@ function openTodaySent(){
   $("#tsClose").addEventListener("click", closeSheet);
   const wrap = $("#mBody").querySelector(".rows");
   if(wrap) wrap.addEventListener("click", e => {
-    const b = e.target.closest("[data-openlead]"); if(!b) return;
-    const id = b.getAttribute("data-openlead");
-    closeSheet();
-    setTimeout(() => openLead(id), 260);
+    const openB = e.target.closest("[data-openlead]");
+    if(openB){
+      const id = openB.getAttribute("data-openlead");
+      closeSheet();
+      setTimeout(() => openLead(id), 260);
+      return;
+    }
+    const retB = e.target.closest("[data-return]");
+    if(retB){
+      const l = leadById(retB.getAttribute("data-return"));
+      const dmId = retB.getAttribute("data-dm");
+      if(!l) return;
+      const gone = removeDm(l.id, dmId);
+      openTodaySent(); renderAll();
+      if(gone) toast((l.name || l.handle || "Lead") + " back in the queue, unsent", () => {
+        l.dms.push(gone); l.dms.sort((a,b)=>a.at-b.at);
+        if(l.status==="queued") l.status="sent";
+        touch(l); save(); openTodaySent(); renderAll();
+      });
+      return;
+    }
+    const delB = e.target.closest("[data-del]");
+    if(delB){
+      const l = leadById(delB.getAttribute("data-del")); if(!l) return;
+      if(!confirm("Delete " + (l.name || l.handle || "this lead") + "? This can't be undone.")) return;
+      const i = db.leads.indexOf(l);
+      db.leads.splice(i,1); db.deleted.push(l.id); save();
+      openTodaySent(); renderAll();
+      toast("Deleted " + (l.handle ? "@"+l.handle : "lead"), () => {
+        db.leads.splice(i,0,l); db.deleted = db.deleted.filter(x => x !== l.id); save();
+        openTodaySent(); renderAll();
+      });
+    }
   });
 }
 $("#btnStats").addEventListener("click", openStats);
