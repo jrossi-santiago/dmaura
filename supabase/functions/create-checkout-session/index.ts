@@ -5,10 +5,12 @@
 //
 // Both plans run through Checkout's subscription mode with a 5-day free
 // trial (Stripe requires a recurring Price for trials — there's no trial on
-// a one-time "payment" mode session). For "lifetime", STRIPE_PRICE_LIFETIME
-// must therefore point at a *recurring* Price in Stripe, not a one-time one;
-// the webhook cancels that subscription right after its first real charge so
-// it never renews. See README "Payments (Stripe)" for the full explanation.
+// a one-time "payment" mode session) — but only for an account that's never
+// had a paid_customers row before; see the trial-abuse guard below. For
+// "lifetime", STRIPE_PRICE_LIFETIME must therefore point at a *recurring*
+// Price in Stripe, not a one-time one; the webhook cancels that
+// subscription right after its first real charge so it never renews. See
+// README "Payments (Stripe)" for the full explanation.
 //
 // Identity: the caller must send their own Supabase session access token as
 // the Authorization bearer (not the anon key) — this function verifies it
@@ -64,6 +66,20 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
     const email = userData.user.email || undefined;
 
+    // Trial-abuse guard: any paid_customers row for this user (active,
+    // past_due, or canceled — status doesn't matter, existing at all is
+    // the signal) means they've already had a trial once, on either plan.
+    // RLS scopes this select to the caller's own row, so the same
+    // user-authed client used above for identity works here with no
+    // service-role key needed. A canceled account that resubscribes still
+    // gets in — it's just billed immediately instead of trialing again.
+    const { data: priorSubscription } = await supabase
+      .from("paid_customers")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const eligibleForTrial = !priorSubscription;
+
     const { plan, successUrl, cancelUrl, datafastVisitorId, datafastSessionId } = await req.json();
     const priceId = PRICE_IDS[plan];
     if (!priceId) {
@@ -95,7 +111,7 @@ Deno.serve(async (req) => {
       // what Stripe charges automatically the moment the trial ends.
       payment_method_collection: "always",
       subscription_data: {
-        trial_period_days: 5,
+        ...(eligibleForTrial ? { trial_period_days: 5 } : {}),
         // Read back by the webhook: "lifetime" subscriptions get canceled
         // right after their one real invoice pays so they never renew;
         // "monthly" ones are left alone to keep billing normally.
