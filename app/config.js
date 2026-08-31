@@ -15,5 +15,9 @@ window.DMAURA_CONFIG = {
     community: "",
     docs: "",
     support: ""
-  }
+  },
+  // Formspree endpoint for the "free DoorDash e-gift card" promo widget
+  // (see initGiftCard() in index.html) — e.g. "https://formspree.io/f/xxxxxxxx".
+  // Leave blank and the widget never renders.
+  GIFT_CARD_FORM_URL: ""
 };

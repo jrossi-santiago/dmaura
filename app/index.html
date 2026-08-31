@@ -384,6 +384,54 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:var(--ground);padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:560;z-index:100;opacity:0;pointer-events:none;transition:all .2s ease;max-width:92vw;text-align:center}
 .toast .undo{pointer-events:auto;cursor:pointer;color:var(--send);margin-left:10px;text-decoration:underline;text-underline-offset:3px;padding:2px 4px}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- gift card promo (only ever shown once someone has cleared the
+   paywall — see initGiftCard()/revealApp() — so "claim it" always implies
+   "already started a trial") ---------- */
+@keyframes giftpop{
+  0%{opacity:0;transform:translateY(-10px) rotate(0deg) scale(.94)}
+  60%{opacity:1;transform:translateY(1px) rotate(-2deg) scale(1.015)}
+  100%{opacity:1;transform:translateY(0) rotate(-2deg) scale(1)}
+}
+.giftcard{
+  display:none;position:fixed;top:22px;right:22px;z-index:45;width:230px;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:16px 16px 14px;box-shadow:var(--shadow);
+  transform:rotate(-2deg);animation:giftpop .5s cubic-bezier(.32,1.4,.4,1) both;
+}
+.giftcard.show{display:block}
+.giftcard::before{
+  content:"";position:absolute;top:-9px;left:22px;width:34px;height:18px;
+  background:color-mix(in srgb, var(--violet) 24%, transparent);
+  border:1px solid color-mix(in srgb, var(--violet) 45%, transparent);
+  border-radius:3px;transform:rotate(-4deg);
+}
+.giftcard-close{
+  position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;
+  display:grid;place-items:center;color:var(--muted);font-size:15px;line-height:1;
+}
+.giftcard-close:hover{background:var(--surface-2);color:var(--ink)}
+.giftcard-emoji{font-size:22px;display:block;margin-bottom:2px}
+.giftcard-head{font-family:var(--serif);font-style:italic;font-size:19px;margin:0 0 4px;line-height:1.15}
+.giftcard-sub{font-size:12.5px;color:var(--ink-2);margin:0 0 10px;line-height:1.4}
+.giftcard-fine{font-size:10.5px;color:var(--muted);margin:8px 0 0;text-align:center}
+.giftcard form{display:flex;flex-direction:column;gap:7px}
+.giftcard input{
+  width:100%;padding:9px 10px;border-radius:9px;border:1px solid var(--line);
+  background:var(--sunk);font-size:13px;
+}
+.giftcard input:focus-visible{outline:2px solid var(--violet);outline-offset:1px}
+.giftcard button[type="submit"]{
+  width:100%;padding:9px 10px;border-radius:9px;background:var(--violet);
+  color:#fff;font-size:13px;font-weight:660;transition:transform .1s ease,opacity .15s ease;
+}
+.giftcard button[type="submit"]:active{transform:scale(.97)}
+.giftcard button[type="submit"]:disabled{opacity:.6}
+.giftcard-err{font-size:11.5px;color:var(--bad);margin:2px 0 0;display:none}
+.giftcard-err.on{display:block}
+.giftcard-thanks{font-size:13px;line-height:1.5}
+.giftcard-thanks b{display:block;font-family:var(--serif);font-style:italic;font-size:19px;font-weight:400;margin-bottom:4px}
+@media (max-width:1039px){ .giftcard{display:none !important} }
 .booting{position:fixed;inset:0;z-index:95;background:var(--ground);display:grid;place-items:center;color:var(--muted);font-size:14px;padding:24px;text-align:center}
 .auth{position:fixed;inset:0;z-index:96;background:var(--ground);display:grid;place-items:center;padding:24px}
 .authcard{width:100%;max-width:360px}
@@ -550,6 +598,21 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <p class="help">Notes, follow-ups and responses for leads you've already contacted — nothing here sends a DM.</p>
     </div>
     <div id="crmBody" style="padding:0 14px 24px"></div>
+  </div>
+
+  <div class="giftcard" id="giftcard">
+    <button type="button" class="giftcard-close" id="giftcardClose" aria-label="Dismiss">×</button>
+    <div id="giftcardBody">
+      <span class="giftcard-emoji" aria-hidden="true">🛹</span>
+      <p class="giftcard-head">Free DoorDash?</p>
+      <p class="giftcard-sub">Try it, then tell me it sucks. Either way I'm sending an e-gift card.</p>
+      <form id="giftcardForm">
+        <input type="email" id="giftcardEmail" placeholder="you@email.com" required autocomplete="email" inputmode="email" />
+        <button type="submit" id="giftcardSubmit">Send it my way</button>
+        <p class="giftcard-err" id="giftcardErr">Couldn't send that — try again?</p>
+      </form>
+      <p class="giftcard-fine">One per person, I read every reply.</p>
+    </div>
   </div>
 </div>
 
@@ -2869,6 +2932,61 @@ function startApp(){
   applyTheme();
   renderAll();
   $("#booting").hidden = true;
+  // Only called (via revealApp()) once enterApp() has already confirmed a
+  // paid_customers row — see isPaidAccount() — so anyone who can see this
+  // widget has already started a trial/subscription. Local-only mode
+  // (CLOUD_ON false) has no such gate, so it never shows there.
+  if(CLOUD_ON) initGiftCard();
+}
+
+/* ------------------------------ gift card promo ------------------------------
+   Fun little floating widget offering a DoorDash e-gift card for feedback —
+   posts straight to Formspree (GIFT_CARD_FORM_URL in config.js), no backend
+   of our own. Dismiss/claim state is per-browser via localStorage so it
+   doesn't nag someone who already closed it or already claimed. */
+function initGiftCard(){
+  const url = CLOUD_CFG.GIFT_CARD_FORM_URL;
+  if(!url) return;
+  if(localStorage.getItem("dmaura_giftcard_dismissed")) return;
+  const el = $("#giftcard");
+  if(!el) return;
+  el.classList.add("show");
+
+  $("#giftcardClose").addEventListener("click", () => {
+    localStorage.setItem("dmaura_giftcard_dismissed", "1");
+    el.classList.remove("show");
+  });
+
+  $("#giftcardForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const emailInput = $("#giftcardEmail");
+    const email = emailInput.value.trim();
+    const errEl = $("#giftcardErr");
+    errEl.classList.remove("on");
+    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    const btn = $("#giftcardSubmit");
+    const label = btn.textContent;
+    btn.disabled = true; emailInput.disabled = true;
+    btn.textContent = "Sending…";
+    try{
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+          email,
+          message: "DM Aura gift card claim",
+          app_user_email: cloudUser ? cloudUser.email : undefined
+        })
+      });
+      if(!res.ok) throw new Error("bad response");
+      localStorage.setItem("dmaura_giftcard_dismissed", "1");
+      $("#giftcardBody").innerHTML = `<p class="giftcard-thanks"><b>Sent 🎉</b>Check that inbox in a bit — I read every reply.</p>`;
+    }catch(err){
+      errEl.classList.add("on");
+      btn.disabled = false; emailInput.disabled = false;
+      btn.textContent = label;
+    }
+  });
 }
 
 function showAuth(){
