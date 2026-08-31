@@ -445,6 +445,20 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
     </div>
     <p class="autherr" id="authErr"></p>
     <button class="btn primary" id="authSubmit">Create account</button>
+    <p class="authfoot" id="authForgotRow" hidden>Forgot your password? <a href="#" id="authForgot">Reset it</a></p>
+  </div>
+</div>
+
+<div class="auth" id="resetScreen" hidden>
+  <div class="authcard">
+    <h1>DM <em>Aura</em></h1>
+    <p class="help">Set a new password for your account.</p>
+    <div class="fields" style="margin-bottom:12px">
+      <div class="f"><label for="rsPass">New password</label><input id="rsPass" type="password" autocomplete="new-password" placeholder="At least 6 characters" /></div>
+      <div class="f"><label for="rsPass2">Repeat password</label><input id="rsPass2" type="password" autocomplete="new-password" placeholder="Retype your password" /></div>
+    </div>
+    <p class="autherr" id="resetErr"></p>
+    <button class="btn primary" id="resetSubmit">Set new password</button>
   </div>
 </div>
 
@@ -734,6 +748,33 @@ const CLOUD_CFG = window.DMAURA_CONFIG || {};
 const CLOUD_ON = !!(CLOUD_CFG.SUPABASE_URL && CLOUD_CFG.SUPABASE_ANON_KEY && window.supabase);
 const sb = CLOUD_ON ? window.supabase.createClient(CLOUD_CFG.SUPABASE_URL, CLOUD_CFG.SUPABASE_ANON_KEY) : null;
 let cloudUser = null;   // set once signed in; cacheKey() below keys local storage off it
+
+/* ============================== crash reporting ==============================
+   No third-party error tracker configured, so this is the cheap version:
+   uncaught errors and rejected promises get inserted into the client_errors
+   table (see README's SQL) instead of vanishing into a customer's console
+   where nobody ever sees them. Insert-only RLS — the app can write its own
+   crash but never read anyone else's; only the project owner sees the table,
+   via the SQL editor or a service_role key. Capped per pageload so a loop
+   that throws repeatedly can't spam the table or the network. */
+let clientErrorsLogged = 0;
+function logClientError(message, stack){
+  if(!CLOUD_ON || clientErrorsLogged >= 5) return;
+  clientErrorsLogged++;
+  sb.from("client_errors").insert({
+    user_id: cloudUser ? cloudUser.id : null,
+    email: cloudUser ? cloudUser.email : null,
+    message: String(message||"").slice(0,2000),
+    stack: String(stack||"").slice(0,4000),
+    url: location.pathname + location.search,
+    user_agent: navigator.userAgent
+  }).then(() => {}, () => {});
+}
+window.addEventListener("error", e => logClientError(e.message, e.error && e.error.stack));
+window.addEventListener("unhandledrejection", e => {
+  const r = e.reason;
+  logClientError(r && r.message ? r.message : String(r), r && r.stack);
+});
 
 /* ?plan=monthly|lifetime arrives from the landing page's pricing buttons
    (landing/index.html now sends people here to sign up first, instead of
@@ -2678,6 +2719,8 @@ function openSettings(){
     <div class="rows">
       <div class="row"><div class="nm"><b>Signed in</b><span>${esc(cloudUser ? cloudUser.email : "")}</span></div>
         <button class="mini" id="seSignOut">Sign out</button></div>
+      <div class="row"><div class="nm"><b>Billing</b><span>Update your card, see invoices, or cancel</span></div>
+        <button class="mini" id="seBilling">Manage</button></div>
     </div>` : ""}
 
     <div class="section">Data</div>
@@ -2707,6 +2750,7 @@ function openSettings(){
   $("#seBackup").addEventListener("click", downloadBackup);
   $("#seRestore").addEventListener("click", restoreBackup);
   if(CLOUD_ON && cloudUser){
+    $("#seBilling").addEventListener("click", e => openBillingPortal(e.currentTarget));
     $("#seSignOut").addEventListener("click", async () => {
       if(!confirm("Sign out? Your leads stay saved to your account.")) return;
       closeSheet();
@@ -2824,6 +2868,7 @@ function showAuth(){
   $(".app").hidden = true;
   $("#payScreen").hidden = true;
   $("#onboardScreen").hidden = true;
+  $("#resetScreen").hidden = true;
   $("#authScreen").hidden = false;
   $("#booting").hidden = true;
   if(typeof setAuthMode === "function") setAuthMode("up");
@@ -2834,10 +2879,26 @@ function showPaywall(){
   $(".app").hidden = true;
   $("#authScreen").hidden = true;
   $("#onboardScreen").hidden = true;
+  $("#resetScreen").hidden = true;
   $("#payScreen").hidden = false;
   $("#booting").hidden = true;
 }
 function hidePaywall(){ $("#payScreen").hidden = true; }
+
+/* Reached only via the "Reset it" email link — Supabase's SDK notices the
+   recovery token in the URL on load and fires PASSWORD_RECOVERY (wired up
+   below), which calls this instead of the normal sign-in-triggers-enterApp
+   path, so a recovery link never accidentally drops someone straight into
+   an old session's data before they've set a password they actually know. */
+function showReset(){
+  $(".app").hidden = true;
+  $("#authScreen").hidden = true;
+  $("#payScreen").hidden = true;
+  $("#onboardScreen").hidden = true;
+  $("#booting").hidden = true;
+  $("#resetScreen").hidden = false;
+}
+function hideReset(){ $("#resetScreen").hidden = true; }
 
 /* ------------------------------ onboarding ------------------------------
    Shown once, right after enterApp() confirms a paid account — see
@@ -2918,6 +2979,7 @@ function showOnboarding(){
   $(".app").hidden = true;
   $("#authScreen").hidden = true;
   $("#payScreen").hidden = true;
+  $("#resetScreen").hidden = true;
   $("#onboardScreen").hidden = false;
   $("#booting").hidden = true;
   onboardStep = 0;
@@ -2958,34 +3020,57 @@ function readCookie(name){
   const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
   return match ? decodeURIComponent(match[1]) : undefined;
 }
+/* Both Edge Functions below need to know *which* signed-in user is calling,
+   not just that the caller holds a valid Supabase key — so every call sends
+   the user's own session access token as the bearer, not the anon key. The
+   anon key still goes in `apikey`, which Supabase's gateway needs for
+   routing regardless of who's signed in. */
+async function authedFetch(fnName, body){
+  const { data } = await sb.auth.getSession();
+  const token = data.session ? data.session.access_token : CLOUD_CFG.SUPABASE_ANON_KEY;
+  const res = await fetch(CLOUD_CFG.SUPABASE_URL + "/functions/v1/" + fnName, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token,
+      "apikey": CLOUD_CFG.SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
 async function startCheckoutFromApp(plan, btn){
   const label = btn.textContent;
   $$("#payScreen .btn").forEach(b => b.disabled = true);
   btn.textContent = "Redirecting…";
   try{
-    const res = await fetch(CLOUD_CFG.SUPABASE_URL + "/functions/v1/create-checkout-session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + CLOUD_CFG.SUPABASE_ANON_KEY,
-        "apikey": CLOUD_CFG.SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify({
-        plan,
-        email: cloudUser ? cloudUser.email : undefined,
-        successUrl: location.origin + location.pathname + "?checkout=success",
-        cancelUrl: location.origin + location.pathname,
-        datafastVisitorId: readCookie("datafast_visitor_id"),
-        datafastSessionId: readCookie("datafast_session_id")
-      })
+    const data = await authedFetch("create-checkout-session", {
+      plan,
+      successUrl: location.origin + location.pathname + "?checkout=success",
+      cancelUrl: location.origin + location.pathname,
+      datafastVisitorId: readCookie("datafast_visitor_id"),
+      datafastSessionId: readCookie("datafast_session_id")
     });
-    const data = await res.json();
     if(!data.url) throw new Error(data.error || "no checkout url returned");
     location.href = data.url;
   }catch(e){
     $("#payHelp").textContent = "Couldn't start checkout — try again in a moment.";
     $$("#payScreen .btn").forEach(b => b.disabled = false);
     btn.textContent = label;
+  }
+}
+async function openBillingPortal(btn){
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Opening…";
+  try{
+    const data = await authedFetch("create-billing-portal-session", {
+      returnUrl: location.origin + location.pathname
+    });
+    if(!data.url) throw new Error(data.error || "no portal url returned");
+    location.href = data.url;
+  }catch(e){
+    toast(e.message || "Couldn't open billing — try again in a moment.");
+    btn.disabled = false; btn.textContent = label;
   }
 }
 
@@ -3061,9 +3146,29 @@ if(CLOUD_ON){
       ? "Create your account to keep your leads. Everything you upload is private to your account."
       : "Sign in to keep your leads. Everything you upload is private to your account.";
     $("#authSubmit").textContent = mode === "up" ? "Create account" : "Sign in";
+    $("#authForgotRow").hidden = mode !== "in";
     authError(null);
   }
   $$("#authModeSwitch button").forEach(b => b.addEventListener("click", () => setAuthMode(b.getAttribute("data-authmode"))));
+
+  $("#authForgot").addEventListener("click", async e => {
+    e.preventDefault();
+    const email = $("#auEmail").value.trim();
+    if(!email){ authError("Enter your email above first, then hit Reset it."); return; }
+    const link = $("#authForgot");
+    const label = link.textContent;
+    link.textContent = "Sending…";
+    try{
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      if(error) throw error;
+      authError(null);
+      toast("Check your inbox for a reset link");
+    }catch(e){
+      authError(e.message || "Couldn't send that — try again in a moment.");
+    }finally{
+      link.textContent = label;
+    }
+  });
 
   async function doAuth(){
     const mode = authMode;
@@ -3113,7 +3218,50 @@ if(CLOUD_ON){
   $("#paySignOut").addEventListener("click", async e => { e.preventDefault(); await sb.auth.signOut(); });
   $("#obSkip").addEventListener("click", finishOnboarding);
 
+  function resetErr(msg){
+    const el = $("#resetErr");
+    el.textContent = msg || "";
+    el.classList.toggle("on", !!msg);
+  }
+  async function doResetPassword(){
+    const pass = $("#rsPass").value, pass2 = $("#rsPass2").value;
+    if(pass.length < 6){ resetErr("Password needs at least 6 characters."); return; }
+    if(pass !== pass2){ resetErr("Passwords don't match."); return; }
+    resetErr(null);
+    const btn = $("#resetSubmit");
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Saving…";
+    try{
+      const { data, error } = await sb.auth.updateUser({ password: pass });
+      if(error) throw error;
+      inPasswordRecovery = false;
+      hideReset();
+      toast("Password updated");
+      if(data.user) enterApp(data.user);
+    }catch(e){
+      resetErr(e.message || "Something went wrong.");
+    }finally{
+      btn.disabled = false; btn.textContent = label;
+    }
+  }
+  $("#resetSubmit").addEventListener("click", doResetPassword);
+  [$("#rsPass"), $("#rsPass2")].forEach(el => el.addEventListener("keydown", e => {
+    if(e.key === "Enter") doResetPassword();
+  }));
+
+  /* Set the moment Supabase's SDK detects a password-recovery link in the
+     URL and fires PASSWORD_RECOVERY (below); cleared once a new password is
+     saved. While true, a session existing is *not* license to drop into
+     enterApp() with someone's old data — they haven't proven they know a
+     password yet, just clicked a link. */
+  let inPasswordRecovery = false;
   sb.auth.onAuthStateChange((event, session) => {
+    if(event === "PASSWORD_RECOVERY"){
+      inPasswordRecovery = true;
+      showReset();
+      return;
+    }
+    if(inPasswordRecovery) return;
     if(session && session.user){
       if(!cloudUser || cloudUser.id !== session.user.id) enterApp(session.user);
     }else if(event === "SIGNED_OUT"){
@@ -3125,9 +3273,10 @@ if(CLOUD_ON){
   });
 
   sb.auth.getSession().then(({ data }) => {
+    if(inPasswordRecovery) return;
     if(data.session && data.session.user) enterApp(data.session.user);
     else showAuth();
-  }).catch(() => showAuth());
+  }).catch(() => { if(!inPasswordRecovery) showAuth(); });
 }else{
   db = load();
   startApp();
