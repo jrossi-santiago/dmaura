@@ -1,12 +1,9 @@
 # DM Aura
 
-A pricing/landing site and the tool behind it — plus an older waitlist page
-that's still in the repo but no longer linked from anywhere live.
+A pricing/landing site and the tool behind it.
 
 ```
-index.html            pricing + landing page — currently byte-identical to landing/index.html (see note below)
-landing/index.html    the same pricing + landing page
-waitlist/index.html   the original early-access page — waitlist capture, posts to Formspree — orphaned, nothing links here
+index.html            the pricing + landing page — nav, hero, how it works, product, pricing, FAQ
 app/                  the tool itself, a standalone static PWA
   index.html          the entire app — markup, styles, logic
   admin/index.html    trial activation dashboard (see "Admin" section below)
@@ -20,50 +17,24 @@ Both halves are static and dependency-free. Drop the folder on any host: `/`
 serves the landing/pricing page, `/app/` serves the tool. Everything under
 `app/` uses relative paths, so it runs from any prefix without configuration.
 
-**File-layout note (as of the last README pass):** `index.html` and
-`landing/index.html` are currently exact duplicates — same pricing copy,
-same "Start free trial" buttons pointing at `/app/?plan=...`. The page that
-actually does waitlist capture (Formspree, the `_gotcha` honeypot, the "join
-early access" copy) now lives only at `waitlist/index.html`, which nothing
-on the live site links to. If the product is still meant to be waitlist-only
-before a public pricing push, point `index.html` back at the waitlist and
-drop the duplicate; if pricing is meant to be the front door now, delete one
-of the two identical copies and redirect the other. Either is a five-minute
-fix — it just hasn't been made yet, so right now a visitor to `/` lands on
-a page that sends them straight into Stripe Checkout.
+There used to be two more copies of this page (`landing/index.html`, an
+exact duplicate, and `waitlist/index.html`, an older Formspree-based
+early-access page nothing linked to any more) — both deleted directly by the
+repo owner once pricing/checkout became the front door for real, so `index.html`
+is now the one and only copy. There is no more waitlist-capture flow on the
+site at all; every path in leads to signing up and starting checkout.
 
-## The waitlist page
+## The landing page
 
-Signups POST to Formspree (`https://formspree.io/f/xnpqanrz`) over `fetch`, so
-the page never navigates away. It handles the states a real form needs: field
-validation before submit, a busy button, server-side errors surfaced in the
-copy Formspree returns, and a success panel that echoes the address it captured.
-A hidden `_gotcha` field catches bots.
-
-Two plates: cream paper for the pitch and the form, navy for the product. The
-headline is Instrument Sans at 700, broken by one word set in Instrument Serif
-italic — a grotesk/editorial-serif switch rather than a single didone doing
-both jobs. A flowing gradient ribbon (cobalt → green → orange → pink) draws in
-behind the hero on load, and halftone dot clusters sit in the corners of both
-plates as texture. IBM Plex Mono carries the marginalia and the lab-notebook
-numbering (`No. 001`, `01–03`, `Fig. 01`) that runs the length of the page; the
-reading copy is Instrument Sans, the same face the tool uses. All three faces
-load from Google Fonts with `display=swap`, so nothing blocks first paint.
-
-Every colour pair was checked rather than eyeballed: cobalt text and marks
-against the cream ground clear AA comfortably, and the one places opacity is
-used for de-emphasis (labels, timestamps) stay well clear of the 4.5:1 floor
-for body-sized text.
-
-The navy plate is a mockup of the outbox — three sent DMs and the day's tally,
-built from real markup rather than a screenshot, so it stays sharp and re-flows
-on a phone. **The names and handles in it are invented**, and the plate is
-labelled `Sample` and `names are fictional` on its own face. Replace it with
-genuine sends when there are some worth showing.
-
-There is no social-proof row. Inventing customer logos for an unreleased tool
-would be fabricating endorsements, so the slot holds product claims that are
-true instead.
+Nav (logo, section links, **Sign in** / **Sign up**), a hero with the DM
+mockup card, a "how it works" band, a product-features section, a "getting
+IDs" guide, a compare table, pricing (Monthly / Lifetime, each linking to
+`app/?plan=monthly|lifetime`), FAQ, and a final CTA — all in the one file,
+sharing the same cream/cobalt/ink brand and Instrument Sans / Instrument
+Serif italic / IBM Plex Mono type system as the app. The pricing buttons and
+the nav's Sign up button skip straight to `app/` (auth first, then checkout —
+see "Payments" below); the nav's Sign in button goes to `app/?mode=in` to
+land on the app's Sign in tab directly instead of Sign up.
 
 ---
 
@@ -105,7 +76,7 @@ One static HTML file, no build step, no dependencies.
 
 ```bash
 python3 -m http.server 8000
-# http://localhost:8000       waitlist page
+# http://localhost:8000       landing/pricing page
 # http://localhost:8000/app/  the tool
 ```
 
@@ -526,9 +497,8 @@ one-time Price can stay around unused. Expect Stripe's dashboard to show a
 lifetime purchase as a subscription that went trialing → active → canceled
 after one invoice — that's expected, not a failed payment.
 
-The landing page's two pricing buttons (`landing/index.html`, and currently
-the identical `index.html` — see the file-layout note up top) are plain
-links to `app/?plan=monthly` or `app/?plan=lifetime` — checkout never starts
+The landing page's two pricing buttons (`index.html`) are plain links to
+`app/?plan=monthly` or `app/?plan=lifetime` — checkout never starts
 anonymously. The app signs the person up (or in) first, and once they're
 authenticated it shows a paywall screen — instead of the leads sheet — to
 any signed-in account that hasn't paid, then immediately continues to
@@ -754,7 +724,7 @@ safely:
   steps 1–7 there with `sk_test_...`) and use that for all future testing,
   leaving this project's functions permanently on the live key.
 
-Whichever way you test: click a pricing button on `landing/index.html` — it
+Whichever way you test: click a pricing button on `index.html` — it
 takes you to `app/`, where you sign up (or sign in) first, then checkout
 starts on its own for the plan you picked. Complete it (Stripe still asks
 for a card even though $0 is due today — that's expected, it's what gets
@@ -830,9 +800,9 @@ gets called.
 
 ## Known issues / planned improvements
 
-Things a review of the payment and account flow turned up. Two are now
+Things a review of the payment and account flow turned up. Three are now
 fixed (kept here, struck through, so the history of what was wrong isn't
-lost); two are still open.
+lost); one is still open, left alone on purpose.
 
 - ~~**Failed renewals have no dunning and no visible signal.**~~ **Fixed.**
   `stripe-webhook` now handles `invoice.payment_failed` (flags
@@ -858,6 +828,8 @@ lost); two are still open.
   worth Stripe's `subscription_data.trial_settings` (or an "have they ever
   had a subscription" check before granting a trial) before any real
   marketing push.
-- **The `index.html` / `landing/index.html` / `waitlist/index.html`
-  situation** described at the top of this file — pick one live story
-  (waitlist-only, or pricing/checkout live) and delete the duplicate.
+- ~~**The `index.html` / `landing/index.html` / `waitlist/index.html`
+  situation.**~~ **Fixed** — repo owner deleted both `landing/index.html`
+  (the duplicate) and `waitlist/index.html` (the orphaned old page)
+  directly. `index.html` is now the single, canonical pricing/landing page;
+  see "The landing page" above.
