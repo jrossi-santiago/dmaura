@@ -208,6 +208,9 @@ a{color:var(--send)}
 .pbio{padding:9px 16px 0;font-size:13.5px;color:var(--ink-2);line-height:1.5;white-space:pre-wrap}
 .idwarn{margin:10px 16px 0;padding:9px 11px;border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:10px;font-size:12.5px;color:var(--ink-2);line-height:1.5}
 .idwarn b{color:var(--warn)}
+.pastdue{display:flex;align-items:center;gap:10px;padding:9px 14px;background:color-mix(in srgb,var(--warn) 12%,transparent);border-bottom:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.pastdue b{color:var(--warn)}
+.pastdue button{flex:none;background:none;border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line));color:var(--ink);border-radius:8px;padding:5px 11px;font-size:12px;font-family:inherit;cursor:pointer}
 
 .tabs{display:flex;gap:2px;padding:10px 16px 0;border-bottom:1px solid var(--line-soft);flex:none;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -525,6 +528,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
     <p class="help" id="payHelp">Pick a plan to unlock your account — the leads and templates you make are waiting behind checkout.</p>
     <button class="btn primary" id="payMonthly">Start 5-day free trial — then $9/mo</button>
     <button class="btn" id="payLifetime">Start 5-day free trial — then $99 once</button>
+    <button class="btn primary" id="payRetry" hidden>Try again</button>
     <p class="authfoot">We collect your card at checkout and charge it automatically when the trial ends, unless you cancel first.<br />Already paid? <a href="#" id="payRefresh">Refresh this page</a> if it doesn't unlock in a few seconds.<br />Wrong account? <a href="#" id="paySignOut">Sign out</a></p>
   </div>
 </div>
@@ -541,6 +545,10 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 </div>
 
 <div class="app">
+  <div class="pastdue" id="pastDueBanner" hidden>
+    <span><b>Your last payment failed.</b> Update your card to keep your account active.</span>
+    <button type="button" id="pastDueBtn">Update card</button>
+  </div>
   <header class="topbar">
     <div class="brandrow">
       <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21.3 2.9 2.7 11.1l8.2 2.5 2.5 7.5z"/><path d="M21.3 2.9 10.9 13.6"/></svg></span>
@@ -821,6 +829,7 @@ const CLOUD_CFG = window.DMAURA_CONFIG || {};
 const CLOUD_ON = !!(CLOUD_CFG.SUPABASE_URL && CLOUD_CFG.SUPABASE_ANON_KEY && window.supabase);
 const sb = CLOUD_ON ? window.supabase.createClient(CLOUD_CFG.SUPABASE_URL, CLOUD_CFG.SUPABASE_ANON_KEY) : null;
 let cloudUser = null;   // set once signed in; cacheKey() below keys local storage off it
+let pastDue = false;    // set in enterApp() when paid_customers.status is 'past_due' — see isPaidAccount()
 
 /* ============================== crash reporting ==============================
    No third-party error tracker configured, so this is the cheap version:
@@ -3085,13 +3094,25 @@ function showAuth(){
 }
 function hideAuth(){ $("#authScreen").hidden = true; }
 
-function showPaywall(){
+/* mode "unpaid" (default) is the real paywall — pick a plan. mode "error"
+   is shown when isPaidAccount() couldn't get a clean answer at all (a
+   network blip, a brief Supabase outage) rather than confirming there's no
+   active row — a currently-paying customer can hit this, so it must never
+   look like "you haven't paid yet." See isPaidAccount()/enterApp() below. */
+function showPaywall(mode){
   $(".app").hidden = true;
   $("#authScreen").hidden = true;
   $("#onboardScreen").hidden = true;
   $("#resetScreen").hidden = true;
   $("#payScreen").hidden = false;
   $("#booting").hidden = true;
+  const isError = mode === "error";
+  $("#payHelp").textContent = isError
+    ? "We couldn't check your payment status just now — likely a brief connection hiccup, not a billing problem. Try again in a moment."
+    : "Pick a plan to unlock your account — the leads and templates you make are waiting behind checkout.";
+  $("#payMonthly").hidden = isError;
+  $("#payLifetime").hidden = isError;
+  $("#payRetry").hidden = !isError;
 }
 function hidePaywall(){ $("#payScreen").hidden = true; }
 
@@ -3212,16 +3233,28 @@ function finishOnboarding(){
 function cameFromCheckout(){
   return new URLSearchParams(location.search).get("checkout") === "success";
 }
+/* Returns "active" | "past_due" | "unpaid" | "error" — not a boolean,
+   because "couldn't check" and "confirmed not paid" need different UI
+   (see showPaywall() above). past_due still counts as paid here: a failed
+   renewal doesn't cut off access on its own, only an actual cancellation
+   does (see stripe-webhook's customer.subscription.deleted handling) — the
+   caller shows a "update your card" banner for it instead of a paywall.
+   Only the *last* attempt's outcome decides "error" vs "unpaid", so a
+   flaky first try followed by a clean "no row" still reads as a normal,
+   confirmed-unpaid account rather than an alarming error state. */
 async function isPaidAccount(allowRetry){
   const tries = allowRetry ? 6 : 1;
+  let lastFailed = false;
   for(let i = 0; i < tries; i++){
+    lastFailed = false;
     try{
-      const { data } = await sb.from("paid_customers").select("status").maybeSingle();
-      if(data && data.status === "active") return true;
-    }catch(e){ /* offline, or the SQL below hasn't been run yet */ }
+      const { data, error } = await sb.from("paid_customers").select("status").maybeSingle();
+      if(error) throw error;
+      if(data && (data.status === "active" || data.status === "past_due")) return data.status;
+    }catch(e){ lastFailed = true; /* offline, or the SQL below hasn't been run yet */ }
     if(i < tries - 1) await new Promise(r => setTimeout(r, 1500));
   }
-  return false;
+  return lastFailed ? "error" : "unpaid";
 }
 // DataFast sets these two cookies (via scripts/tracking.js) to identify the
 // visitor/session; forwarding them into Stripe metadata is what lets DataFast
@@ -3284,13 +3317,20 @@ async function openBillingPortal(btn){
   }
 }
 
+function updatePastDueBanner(){
+  $("#pastDueBanner").hidden = !pastDue;
+}
 async function enterApp(user){
   cloudUser = user;
   hideAuth();
-  const paid = await isPaidAccount(cameFromCheckout());
+  const status = await isPaidAccount(cameFromCheckout());
   history.replaceState(null, "", location.pathname);   // drop ?checkout=success either way
-  if(!paid){
-    showPaywall();
+  if(status === "error"){
+    showPaywall("error");
+    return;
+  }
+  if(status === "unpaid"){
+    showPaywall("unpaid");
     if(requestedPlan){
       const plan = requestedPlan;
       requestedPlan = null;
@@ -3298,6 +3338,9 @@ async function enterApp(user){
     }
     return;
   }
+  // status is "active" or "past_due" — either way the account keeps access;
+  // past_due just means the banner below nags them to fix their card.
+  pastDue = status === "past_due";
   hidePaywall();
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();
@@ -3314,6 +3357,7 @@ async function enterApp(user){
 function revealApp(){
   $("#onboardScreen").hidden = true;
   $(".app").hidden = false;
+  updatePastDueBanner();
   startApp();
   startPeriodicSync();
 }
@@ -3426,6 +3470,14 @@ if(CLOUD_ON){
   $("#payLifetime").addEventListener("click", e => startCheckoutFromApp("lifetime", e.currentTarget));
   $("#payRefresh").addEventListener("click", e => { e.preventDefault(); location.reload(); });
   $("#paySignOut").addEventListener("click", async e => { e.preventDefault(); await sb.auth.signOut(); });
+  $("#payRetry").addEventListener("click", async e => {
+    const btn = e.currentTarget;
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Checking…";
+    if(cloudUser) await enterApp(cloudUser);
+    btn.disabled = false; btn.textContent = label;
+  });
+  $("#pastDueBtn").addEventListener("click", e => openBillingPortal(e.currentTarget));
   $("#obSkip").addEventListener("click", finishOnboarding);
 
   function resetErr(msg){
