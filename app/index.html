@@ -204,6 +204,7 @@ a{color:var(--send)}
 .phead .h a{text-decoration:none;font-weight:580}
 .phead .nums{display:flex;gap:12px;font-size:12.5px;color:var(--muted);margin-top:5px}
 .phead .nums b{font-family:var(--mono);color:var(--ink-2);font-weight:620}
+.phead .iconbtn:hover{color:var(--bad);background:color-mix(in srgb, var(--bad) 12%, transparent);border-color:transparent}
 .pbio{padding:9px 16px 0;font-size:13.5px;color:var(--ink-2);line-height:1.5;white-space:pre-wrap}
 .idwarn{margin:10px 16px 0;padding:9px 11px;border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:10px;font-size:12.5px;color:var(--ink-2);line-height:1.5}
 .idwarn b{color:var(--warn)}
@@ -636,6 +637,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <div class="h"><a id="shHandle" href="#" target="_blank" rel="noopener">—</a></div>
       <div class="nums" id="shNums"></div>
     </div>
+    <button class="iconbtn" id="shDelete" title="Delete this lead" aria-label="Delete this lead"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M10 11v6M14 11v6"/></svg></button>
   </div>
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-pane="msg" aria-selected="true">Message</button>
@@ -1984,7 +1986,7 @@ $("#logBody").addEventListener("click", e => {
   renderSheet(); renderAll();
   if(gone) toast("Removed", () => { l.dms.push(gone); l.dms.sort((a,b)=>a.at-b.at); if(l.status==="queued") l.status="sent"; touch(l); save(); renderSheet(); renderAll(); });
 });
-$("#btnDelete").addEventListener("click", () => {
+function deleteLeadFromSheet(){
   const l = leadById(state.leadId); if(!l) return;
   const i = db.leads.indexOf(l);
   db.leads.splice(i,1); db.deleted.push(l.id); save();
@@ -1992,7 +1994,9 @@ $("#btnDelete").addEventListener("click", () => {
   toast("Deleted " + (l.handle ? "@"+l.handle : "lead"), () => {
     db.leads.splice(i,0,l); db.deleted = db.deleted.filter(x => x !== l.id); save(); renderAll();
   });
-});
+}
+$("#btnDelete").addEventListener("click", deleteLeadFromSheet);
+$("#shDelete").addEventListener("click", deleteLeadFromSheet);
 
 /* ============================== focus mode ==============================
    One lead at a time. Tapping Open DM logs the send and advances, so when
