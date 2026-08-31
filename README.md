@@ -274,6 +274,45 @@ create policy own_leads      on leads      for all using (auth.uid() = user_id) 
 create policy own_tombstones on tombstones for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 
+### 2a. If leads don't sync but templates do
+
+The single most likely cause is **schema drift**: the `leads` table exists,
+but is missing a column the client writes. `pushToCloud()` sends a full row
+for every lead, so one missing column fails *every* leads upsert, forever,
+with `PGRST204 Could not find the '<col>' column of 'leads' in the schema
+cache`. Templates share none of those columns, so they keep syncing happily —
+which is exactly what makes this look like a merge bug rather than a schema
+one. The failure is invisible in the UI; it is only recorded in
+`client_errors` (see the SQL further down).
+
+This has actually happened in production: the project was created from an
+older version of this README, so `leads` never got the `follow_up` column
+added by the `alter table` above, and no lead ever reached Postgres from any
+device.
+
+Check for it before touching any client code — every column the client sends
+must exist:
+
+```sql
+select column_name from information_schema.columns
+where table_schema = 'public' and table_name = 'leads'
+order by ordinal_position;
+```
+
+Compare that against the `leadToRow()` payload in `app/index.html`. Anything
+missing is the bug. Re-running the SQL block above adds it. Then check what
+the client has been reporting:
+
+```sql
+select created_at, email, message from client_errors
+order by created_at desc limit 20;
+```
+
+After a schema change, PostgREST caches the old schema for a short while;
+`notify pgrst, 'reload schema';` refreshes it immediately. No client change
+is needed to recover — each device pushes its whole `db.leads` on the next
+sync, so the leads land as soon as the column exists.
+
 (This is a simpler shape than an earlier draft of this section: DMs live as
 a `jsonb` column on `leads` instead of their own table, matching how the
 client already nests them under each lead — one row per lead to upsert,
