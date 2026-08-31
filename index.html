@@ -184,8 +184,8 @@ h2 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
   .nav.open .links{max-height:320px}
   .nav .links a{padding:14px var(--pad); width:100%; border-top:1px solid var(--rule)}
   .burger{display:flex}
-  .nav .btn.primary{display:none}
-  .nav.open .btn.primary{display:inline-flex}
+  .nav .btn.primary, .nav .btn.ghost{display:none}
+  .nav.open .btn.primary, .nav.open .btn.ghost{display:inline-flex}
 }
 
 /* ── hero ───────────────────────────────────────────────────────── */
@@ -464,7 +464,8 @@ footer.site .bottom i{font-family:var(--serif); font-style:italic; color:var(--c
       <a href="#compare">Compare</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
-      <a class="btn primary" href="../app/">Start free trial<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
+      <a class="btn ghost" href="../app/?mode=in">Sign in</a>
+      <a class="btn primary" href="../app/">Sign up<svg viewBox="0 0 16 10" aria-hidden="true"><path d="M1 5h13M10 1l4 4-4 4"/></svg></a>
     </div>
     <button class="burger" id="burger" aria-label="Menu" aria-expanded="false" aria-controls="navLinks"><span></span></button>
   </div>
