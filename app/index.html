@@ -851,6 +851,7 @@ const CLOUD_ON = !!(CLOUD_CFG.SUPABASE_URL && CLOUD_CFG.SUPABASE_ANON_KEY && win
 const sb = CLOUD_ON ? window.supabase.createClient(CLOUD_CFG.SUPABASE_URL, CLOUD_CFG.SUPABASE_ANON_KEY) : null;
 let cloudUser = null;   // set once signed in; cacheKey() below keys local storage off it
 let pastDue = false;    // set in enterApp() when paid_customers.status is 'past_due' — see isPaidAccount()
+let purchaseTracked = false;   // guards trackPurchaseConversion() below against firing twice
 
 /* ============================== crash reporting ==============================
    No third-party error tracker configured, so this is the cheap version:
@@ -3394,6 +3395,16 @@ function finishOnboarding(){
 function cameFromCheckout(){
   return new URLSearchParams(location.search).get("checkout") === "success";
 }
+/* Fires the X (Twitter) Ads purchase conversion event exactly once, the
+   moment a user lands back from Stripe Checkout and their account is
+   confirmed paid (see enterApp() below) — not on every login, just the
+   completed-purchase redirect. twq itself is loaded site-wide by
+   scripts/tracking.js. */
+function trackPurchaseConversion(){
+  if(purchaseTracked) return;
+  purchaseTracked = true;
+  if(typeof twq === "function") twq("event", "tw-revbw-revc3", {});
+}
 /* Returns "active" | "past_due" | "unpaid" | "error" — not a boolean,
    because "couldn't check" and "confirmed not paid" need different UI
    (see showPaywall() above). past_due still counts as paid here: a failed
@@ -3484,7 +3495,8 @@ function updatePastDueBanner(){
 async function enterApp(user){
   cloudUser = user;
   hideAuth();
-  const status = await isPaidAccount(cameFromCheckout());
+  const cameFromStripe = cameFromCheckout();
+  const status = await isPaidAccount(cameFromStripe);
   history.replaceState(null, "", location.pathname);   // drop ?checkout=success either way
   if(status === "error"){
     showPaywall("error");
@@ -3502,6 +3514,7 @@ async function enterApp(user){
   // status is "active" or "past_due" — either way the account keeps access;
   // past_due just means the banner below nags them to fix their card.
   pastDue = status === "past_due";
+  if(cameFromStripe) trackPurchaseConversion();
   hidePaywall();
   db = load();                // now that cloudUser is set, this reads the user-scoped key
   await pullFromCloud();
