@@ -1309,8 +1309,30 @@ function renderMessage(tpl, l){
             .replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
 }
 function tplById(id){ return db.templates.find(t => t.id === id) || db.templates[0] || null; }
+/* The rotation toggle is the whole switch, not just an import-time one.
+   On: a lead sends whatever slot the rotation gave it (or whatever you
+   picked for it by hand). Off: every lead sends the current default
+   template, whatever tplId it happens to be carrying from a previous
+   rotation — flipping the switch off has to actually change what lands on
+   the clipboard, including for leads imported while it was on. */
 function currentTpl(l){
+  if(!db.templates.length) return null;
+  if(!db.settings.rotateTemplates) return tplById(db.settings.tplId) || db.templates[0] || null;
   return tplById((l && l.tplId) || db.settings.tplId) || db.templates[0] || null;
+}
+/* The composer's template picker means two different things depending on
+   the switch. With rotation on, it pins this one lead to a template. With
+   it off there is only ever one template in play, so picking one here is
+   picking the default — announce it, because the choice applies to every
+   other lead too. */
+function pickTemplateFor(l, id){
+  if(db.settings.rotateTemplates){ l.tplId = id; }
+  else {
+    db.settings.tplId = id;
+    db.settings.updated = Date.now();
+    toast("Default template set — rotation is off, so every lead uses it");
+  }
+  l.draft = ""; touch(l); save();
 }
 function messageFor(l){
   if(l.draft) return l.draft;
@@ -1808,6 +1830,13 @@ function renderSelbar(){
 function renderAll(){
   renderFilters(); renderList(); renderStats(); renderSelbar();
 }
+/* Anything that changes which template a lead sends — the rotation switch,
+   a new default — has to repaint the composer sitting open behind the
+   modal, or the message on screen is one the app no longer agrees with. */
+function refreshOpenComposers(){
+  if(state.leadId && !$("#sheet").hidden) renderSheet();
+  if(!$("#focus").hidden) renderFocus();
+}
 
 /* ============================== lead sheet ============================== */
 function leadById(id){ return db.leads.find(l => l.id === id) || null; }
@@ -2014,7 +2043,7 @@ $("#msgBox").addEventListener("input", e => {
 });
 $("#tplPick").addEventListener("change", e => {
   const l = leadById(state.leadId); if(!l) return;
-  l.tplId = e.target.value; l.draft = ""; touch(l); save();
+  pickTemplateFor(l, e.target.value);
   $("#msgBox").value = messageFor(l);
   autoGrow($("#msgBox"));
   updateCount($("#msgCt"), $("#msgBox").value);
@@ -2217,7 +2246,7 @@ $("#fMsg").addEventListener("input", e => {
 });
 $("#fTpl").addEventListener("change", e => {
   const l = focusLead(); if(!l) return;
-  l.tplId = e.target.value; l.draft = ""; touch(l); save();
+  pickTemplateFor(l, e.target.value);
   $("#fMsg").value = messageFor(l);
   autoGrow($("#fMsg"));
   updateCount($("#fCt"), $("#fMsg").value);
@@ -2479,7 +2508,13 @@ function openTemplates(){
   $("#tplNew").addEventListener("click", () => editTemplate(null));
   $("#mBody").querySelector(".rows").addEventListener("click", e => {
     const use = e.target.closest("[data-use]");
-    if(use){ db.settings.tplId = use.getAttribute("data-use"); save(); openTemplates(); renderList(); toast("Default template set"); return; }
+    if(use){
+      db.settings.tplId = use.getAttribute("data-use");
+      db.settings.updated = Date.now();
+      save(); openTemplates(); renderList(); refreshOpenComposers();
+      toast(db.settings.rotateTemplates ? "Default template set" : "Default template set — every lead uses it");
+      return;
+    }
     const ed = e.target.closest("[data-edit]");
     if(ed){ editTemplate(ed.getAttribute("data-edit")); return; }
     const del = e.target.closest("[data-del]");
@@ -2892,6 +2927,7 @@ $("#tQueue").addEventListener("click", () => { state.filter = "queue"; renderFil
 /* ============================== settings & export ============================== */
 function openSettings(){
   const s = db.settings;
+  const defTplName = (tplById(s.tplId) || {}).name || "";
   modal("Settings", `
     <div class="section">You</div>
     <div class="fields">
@@ -2921,7 +2957,7 @@ function openSettings(){
       <label class="row"><input type="checkbox" data-s="openInApp" ${s.openInApp?"checked":""} />
         <span class="nm"><b>Open in the X app</b><span>Uses twitter:// links. Only if the app is installed</span></span></label>
       <label class="row"><input type="checkbox" data-s="rotateTemplates" ${s.rotateTemplates?"checked":""} />
-        <span class="nm"><b>Rotate templates on import</b><span>New leads cycle through your templates in order — lead 1 gets template 1, lead 2 gets template 2, looping back once it runs out — so replies split evenly for a fair A/B read</span></span></label>
+        <span class="nm"><b>Rotate templates</b><span>On, leads cycle through your templates in order — lead 1 gets template 1, lead 2 gets template 2, looping back once it runs out — so replies split evenly for a fair A/B read. Off, every lead gets your default template${defTplName ? " (<b>"+esc(defTplName)+"</b>)" : ""}.</span></span></label>
     </div>
 
     <div class="section">Look</div>
@@ -2959,8 +2995,18 @@ function openSettings(){
       if(["dailyGoal","dailyCap","paceSeconds"].includes(k)) v = Math.max(0, parseInt(v,10) || 0);
       db.settings[k] = v;
       db.settings.updated = Date.now();
+      /* Flipping rotation on has to catch up the leads already sitting in the
+         queue — they were imported with no slot while it was off, and would
+         otherwise all send the default until the next import. Flipping it off
+         needs no data change: currentTpl() ignores the stored slots. */
+      if(k === "rotateTemplates" && v) backfillTplRotation();
       save();
       if(k === "theme") applyTheme();
+      if(k === "rotateTemplates"){
+        toast(v ? "Rotation on — leads cycle through your templates"
+                : "Rotation off — every lead uses your default template");
+        refreshOpenComposers();
+      }
       renderStats(); renderList();
     });
   });
