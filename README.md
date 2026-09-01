@@ -136,12 +136,12 @@ A per-lead **image to send** is a separate column from the avatar (avatar is
 the lead's own profile photo, shown in the UI only). Map a column to
 "Image to send (URL)" — headers like `dm_image`, `send_image`, `attachment`,
 `message_image` auto-match — or paste an image URL into a lead's Info tab by
-hand. It shows up on the Message tab with its own **Copy image** button next
-to **Copy**: X's DM compose has no way to prefill an attachment the way it
-prefills text, so the button puts the actual image bytes on the clipboard
-(not just the URL) for a second paste into X, right after pasting the
-message. If the image's host blocks cross-origin fetches, the button falls
-back to opening the image in a new tab so it can be copied by hand instead.
+hand. X's DM compose has no way to prefill an attachment the way it prefills
+text, so **Copy** (and Send/Open DM, which copies too) puts both the message
+text and the actual image bytes on the clipboard in one write — one paste
+into X picks up both. If the image's host blocks cross-origin fetches (or
+the fetch is too slow), it falls back to a text-only copy and opens the
+image in its own tab so it can be copied by hand as a second paste.
 
 ## Messages
 
