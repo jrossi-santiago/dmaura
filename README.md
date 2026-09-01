@@ -11,11 +11,17 @@ app/                  the tool itself, a standalone static PWA
   manifest.webmanifest, icon.svg, icon-*.png   paper-plane mark on cobalt
   sample-leads.csv    example import, including rows with no numeric id
 scripts/tracking.js   third-party tracking scripts (DataFast), loaded by every page above
+middleware.js          Vercel Routing Middleware: server-side DataFast AI crawler tracking
 ```
 
-Both halves are static and dependency-free. Drop the folder on any host: `/`
-serves the landing/pricing page, `/app/` serves the tool. Everything under
-`app/` uses relative paths, so it runs from any prefix without configuration.
+Both halves are static and dependency-free — drop the folder on any host and
+`/` serves the landing/pricing page, `/app/` serves the tool, everything
+under `app/` uses relative paths so it runs from any prefix without
+configuration. `middleware.js` is the one Vercel-specific, non-static piece:
+it needs `package.json` (`@datafast/ai-crawl`, `@vercel/functions`) so
+Vercel installs and bundles it as an Edge Function. It only matters when
+deployed on Vercel; other hosts just ignore it and serve the static files as
+before.
 
 There used to be two more copies of this page (`landing/index.html`, an
 exact duplicate, and `waitlist/index.html`, an older Formspree-based
@@ -72,7 +78,10 @@ missing one, and you can paste it into any lead under *Info*.
 
 ## Running it
 
-One static HTML file, no build step, no dependencies.
+Static HTML, no build step, no dependencies to serve the site locally —
+`package.json` and `middleware.js` only exist for Vercel's AI crawler
+tracking (see "AI crawler tracking" below) and aren't needed to run or
+preview the pages.
 
 ```bash
 python3 -m http.server 8000
@@ -83,6 +92,27 @@ python3 -m http.server 8000
 On iPhone, open the deployed `/app/` URL in Safari → Share → **Add to Home
 Screen**. It installs as a standalone app and works offline; DMs still open the
 X app.
+
+## AI crawler tracking
+
+`scripts/tracking.js` covers human visitors (client-side DataFast analytics),
+but AI crawlers — ChatGPT, Claude, Perplexity, Googlebot, GPTBot, etc. —
+don't run page JavaScript, so they never fire that script. Seeing them
+requires a server-side hook, which for this static site means [Vercel
+Routing Middleware](https://vercel.com/docs/routing-middleware): `middleware.js`
+at the repo root runs on every request Vercel serves and reports likely AI/
+search crawler requests to DataFast via `@datafast/ai-crawl`, using the same
+`dfid_...` website id as `scripts/tracking.js`. It only affects the Vercel
+deployment — other static hosts (or `python3 -m http.server` locally) just
+ignore the file and serve pages as before, and it never blocks or slows a
+response (the DataFast call is scheduled in the background via
+`context.waitUntil`, same as any other Vercel Function).
+
+Because this is the one non-static piece of the project, it needs
+`package.json` so Vercel installs `@datafast/ai-crawl` and `@vercel/functions`
+(the latter only for its `next()` helper, to pass the request through
+unchanged) and bundles `middleware.js` as an Edge Function. Nothing else in
+the repo depends on either package.
 
 ## Importing
 
