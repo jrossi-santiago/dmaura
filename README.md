@@ -606,8 +606,8 @@ Stripe dashboard → **Product catalog → Add product**, twice:
 
 | Product | Price | Billing |
 | --- | --- | --- |
-| DM Aura — Monthly | $9.00 | Recurring, monthly |
-| DM Aura — Lifetime | $99.00 | Recurring (any interval — see note above; canceled after the first charge so it never actually renews) |
+| DM Aura — Monthly | $19.00 | Recurring, monthly |
+| DM Aura — Lifetime | $199.00 | Recurring (any interval — see note above; canceled after the first charge so it never actually renews) |
 
 Both need **"Recurring"** selected in Stripe, even Lifetime — trials only
 exist on recurring Prices. Open each product and copy its **Price ID**
