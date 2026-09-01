@@ -340,6 +340,14 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
 .tokens{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 12px}
 .tokens button{font-family:var(--mono);font-size:11.5px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;color:var(--ink-2);background:var(--surface-2)}
 
+/* ---------- list-tagging box on import ---------- */
+.listpick{border:1px solid var(--send);background:color-mix(in srgb,var(--send) 7%,transparent);border-radius:12px;padding:12px 13px 13px}
+.listpick label{color:var(--send)}
+.listpick .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.listpick .chip{font-size:12px;font-weight:620;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
+.listpick .chip.on{border-color:var(--send);color:var(--send);background:var(--surface-2)}
+.listpick .hint{margin-top:9px;margin-bottom:0}
+
 /* ---------- stats ---------- */
 .heroes{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:18px}
 @media (min-width:520px){.heroes{grid-template-columns:repeat(4,1fr)}}
@@ -1444,6 +1452,18 @@ function toNum(v){
   return isFinite(n) ? n : 0;
 }
 
+/* Existing list names and how many leads already carry each, most-used first —
+   lets the import screen offer them instead of the user retyping (and typo-splitting) one. */
+function listCounts(){
+  const m = new Map();
+  db.leads.forEach(l => {
+    const n = (l.listName||"").trim();
+    if(!n) return;
+    m.set(n, (m.get(n)||0) + 1);
+  });
+  return [...m.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0])).map(([name,count]) => ({name,count}));
+}
+
 /* Turn mapped rows into leads, merging anything we already have. */
 function buildLeads(rows, headerRow, map, listName){
   const out = [];
@@ -2401,16 +2421,20 @@ function renderMapStep(){
       <select data-col="${i}">${opts(imp.map[i])}</select>
     </div>`).join("");
 
+  const lists = listCounts();
+
   modal("Match the columns", `
+    <div class="f listpick" style="margin-bottom:14px">
+      <label for="impList">Tag this import as a list</label>
+      <input id="impList" type="text" value="${esc(imp.name)}" placeholder="e.g. SaaS founders — Aug" list="listSuggest" autocomplete="off" />
+      <datalist id="listSuggest">${lists.map(x => `<option value="${esc(x.name)}"></option>`).join("")}</datalist>
+      ${lists.length ? `<div class="chips" id="listChips">${lists.map(x => `<button type="button" class="chip" data-list="${esc(x.name)}">${esc(x.name)} · ${x.count}</button>`).join("")}</div>` : ""}
+      <div class="hint" id="listHint"></div>
+    </div>
     <label class="row" style="margin-bottom:12px">
       <input type="checkbox" id="hasHeader" ${imp.header?"checked":""} />
       <span class="nm"><b>First row is headings</b><span>${esc(head.slice(0,4).join(" · ").slice(0,60))}</span></span>
     </label>
-    <div class="f" style="margin-bottom:12px">
-      <label for="impList">List name</label>
-      <input id="impList" type="text" value="${esc(imp.name)}" placeholder="e.g. SaaS founders — Aug" />
-      <div class="hint">Tags every row so you can filter and compare lists later.</div>
-    </div>
     <div class="section">Columns</div>
     <div id="mapWrap">${mapHTML}</div>
     <div class="preview" id="impPreview"></div>
@@ -2427,6 +2451,14 @@ function renderMapStep(){
     imp.map[+s.getAttribute("data-col")] = s.value;
     updatePreview();
   });
+  $("#impList").addEventListener("input", e => { imp.name = e.target.value; updateListHint(); });
+  const chips = $("#listChips");
+  if(chips) chips.addEventListener("click", e => {
+    const b = e.target.closest("[data-list]"); if(!b) return;
+    imp.name = b.getAttribute("data-list");
+    $("#impList").value = imp.name;
+    updateListHint();
+  });
   $("#impBack").addEventListener("click", openImport);
   $("#impGo").addEventListener("click", () => {
     const list = $("#impList").value.trim();
@@ -2434,7 +2466,19 @@ function renderMapStep(){
     if(!leads.length){ toast("No handles or IDs found in those columns"); return; }
     finishImport(leads, list);
   });
+  updateListHint();
   updatePreview();
+}
+function updateListHint(){
+  const el = $("#listHint"); if(!el) return;
+  const val = $("#impList").value.trim();
+  const hit = listCounts().find(x => x.name.toLowerCase() === val.toLowerCase());
+  el.innerHTML = !val
+    ? `No list set — these will drop into <b>No list</b> along with anything else untagged. Name it so you can filter this batch, and send it its own template, later.`
+    : hit
+      ? `<b>${hit.count}</b> ${plural(hit.count,"lead")} already tagged <b>${esc(val)}</b> — new rows join them.`
+      : `New list — <b>${esc(val)}</b> will be created.`;
+  $$("#listChips [data-list]").forEach(b => b.classList.toggle("on", b.getAttribute("data-list").toLowerCase() === val.toLowerCase()));
 }
 function updatePreview(){
   const leads = buildLeads(imp.rows, imp.header, imp.map, "");
