@@ -603,6 +603,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <select id="selStatus"><option value="">Set status…</option></select>
       <button id="selTag">Tag</button>
       <button id="selAll">All</button>
+      <button id="selExport">Export CSV</button>
       <button class="danger" id="selDel">Delete</button>
     </div>
 
@@ -3118,8 +3119,7 @@ function exportAnalytics(){
   download("dmaura-analytics-" + today() + ".csv", lines.join("\n"), "text/csv;charset=utf-8");
   toast("Analytics exported");
 }
-$("#btnExport").addEventListener("click", () => {
-  const rows = visible();
+function exportLeadsCSV(rows, tag){
   if(!rows.length){ toast("Nothing to export"); return; }
   const lines = [CSV_COLS.join(",")];
   rows.forEach(l => {
@@ -3127,8 +3127,13 @@ $("#btnExport").addEventListener("click", () => {
     lines.push([l.handle, l.xid, l.name, l.bio, l.followers, l.following, l.location, l.website,
       l.status, l.tags.join("|"), l.listName, l.dms.length, last, l.note].map(csvCell).join(","));
   });
-  download("dmaura-" + state.filter + "-" + today() + ".csv", lines.join("\n"), "text/csv;charset=utf-8");
+  download("dmaura-" + tag + "-" + today() + ".csv", lines.join("\n"), "text/csv;charset=utf-8");
   toast(rows.length + " rows exported");
+}
+$("#btnExport").addEventListener("click", () => exportLeadsCSV(visible(), state.filter));
+$("#selExport").addEventListener("click", () => {
+  const rows = visible().filter(l => state.sel.has(l.id));
+  exportLeadsCSV(rows, state.filter + "-selected");
 });
 
 /* ============================== boot ============================== */
