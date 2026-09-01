@@ -227,7 +227,10 @@ textarea.msg{width:100%;min-height:170px;border:1px solid var(--line);border-rad
 .msgmeta .spacer{flex:1}
 .msgmeta .ct{font-family:var(--mono)}
 .msgmeta .ct.over{color:var(--bad);font-weight:680}
-.msgmeta .re{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;font-size:12px}
+.imgbar{display:flex;align-items:center;gap:10px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.imgbar .spacer{flex:1}
+.imgprev{width:34px;height:34px;border-radius:8px;object-fit:cover;flex:none;background:var(--sunk);border:1px solid var(--line)}
+.msgmeta .re,.imgbar .re{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;font-size:12px}
 
 .fields{display:grid;gap:10px}
 .f label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:660;margin-bottom:4px}
@@ -604,6 +607,11 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
         <span class="spacer"></span>
         <button class="re" id="btnCopyMsg">Copy</button>
       </div>
+      <div class="imgbar" id="shImgBar" hidden>
+        <img id="shImgThumb" class="imgprev" alt="" referrerpolicy="no-referrer" />
+        <span class="spacer"></span>
+        <button class="re" id="btnCopyImg">Copy image</button>
+      </div>
       <div id="shWarn"></div>
     </div>
     <div class="pane hide" data-pane="info">
@@ -654,6 +662,11 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
         <span class="ct" id="fCt">0</span>
         <span class="spacer"></span>
         <button class="re" id="fCopy">Copy</button>
+      </div>
+      <div class="imgbar" id="fImgBar" hidden>
+        <img id="fImgThumb" class="imgprev" alt="" referrerpolicy="no-referrer" />
+        <span class="spacer"></span>
+        <button class="re" id="fCopyImg">Copy image</button>
       </div>
     </div>
   </div>
@@ -873,7 +886,7 @@ function save(){
 function mkLead(o){
   const hadId = !!(o && o.id);
   const l = Object.assign({
-    id:uid(), xid:"", handle:"", name:"", bio:"", avatar:"", website:"", location:"",
+    id:uid(), xid:"", handle:"", name:"", bio:"", avatar:"", image:"", website:"", location:"",
     followers:0, following:0, tweets:0, verified:false,
     status:"queued", tags:[], listName:"", note:"", followUp:null, draft:"", tplId:null,
     dms:[], created:Date.now(), updated:0
@@ -913,7 +926,7 @@ function scheduleCloudPush(){
 function leadToRow(l, uidc){
   return {
     id:l.id, user_id:uidc, xid:l.xid, handle:l.handle, name:l.name, bio:l.bio,
-    avatar:l.avatar, website:l.website, location:l.location,
+    avatar:l.avatar, image:l.image, website:l.website, location:l.location,
     followers:l.followers, following:l.following, tweets:l.tweets, verified:!!l.verified,
     status:l.status, tags:l.tags, list_name:l.listName, note:l.note, follow_up:l.followUp || null, draft:l.draft,
     tpl_id:l.tplId || null, dms:l.dms, created_at:new Date(l.created).toISOString(),
@@ -922,7 +935,7 @@ function leadToRow(l, uidc){
 }
 function rowToLead(r){
   return mkLead({
-    id:r.id, xid:r.xid, handle:r.handle, name:r.name, bio:r.bio, avatar:r.avatar,
+    id:r.id, xid:r.xid, handle:r.handle, name:r.name, bio:r.bio, avatar:r.avatar, image:r.image,
     website:r.website, location:r.location, followers:r.followers, following:r.following,
     tweets:r.tweets, verified:r.verified, status:r.status, tags:r.tags||[], listName:r.list_name,
     note:r.note, followUp:r.follow_up, draft:r.draft, tplId:r.tpl_id, dms:r.dms||[],
@@ -1190,6 +1203,41 @@ function copyText(s){
   return Promise.resolve();
 }
 
+/* Clipboard image write only has solid cross-browser support for PNG, so a
+   fetched jpg/webp/etc gets redrawn onto a canvas first. */
+function blobToPng(blob){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth || 1; c.height = img.naturalHeight || 1;
+      c.getContext("2d").drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode failed")); };
+    img.src = url;
+  });
+}
+/* Best-effort: put the lead's image on the clipboard as actual image bytes
+   (not a URL) so it can be pasted straight into X as an attachment, same
+   gesture as pasting the text. Cross-origin hosts that don't allow fetch()
+   (no CORS header) can't be read this way — the caller falls back to
+   opening the image in a tab so it can be copied by hand instead. */
+async function copyImage(url){
+  if(!url || !navigator.clipboard || !navigator.clipboard.write || typeof ClipboardItem === "undefined") return false;
+  try{
+    const res = await fetch(url, {referrerPolicy:"no-referrer"});
+    if(!res.ok) throw new Error("http " + res.status);
+    const blob = await res.blob();
+    if(!/^image\//.test(blob.type)) throw new Error("not an image: " + blob.type);
+    const png = blob.type === "image/png" ? blob : await blobToPng(blob);
+    await navigator.clipboard.write([new ClipboardItem({"image/png": png})]);
+    return true;
+  }catch(e){ return false; }
+}
+
 // Field Study accent family — cobalt/orange/green/pink plus a deeper tonal
 // variant of each, all checked against the white avatar-initial text.
 const AV_COLORS = ["#2C4CDB","#B8420C","#1F7A5C","#A83D6E","#1B3A9E","#9C5A1C","#0F6B52","#7A3660"];
@@ -1215,6 +1263,11 @@ function avatarHTML(l, cls){
 }
 
 function paintAvatar(slot, l){ if(slot) slot.innerHTML = avatarHTML(l); }
+function paintImageBar(bar, thumb, l){
+  if(!bar) return;
+  bar.hidden = !(l && l.image);
+  if(thumb) thumb.src = (l && l.image) || "";
+}
 
 /* ============================== X deep links ==============================
    The whole point of the tool. With a numeric account id, X will open the
@@ -1401,6 +1454,7 @@ const FIELDS = [
   {k:"location",  label:"Location"},
   {k:"website",   label:"Website"},
   {k:"avatar",    label:"Avatar image URL"},
+  {k:"image",     label:"Image to send (URL)"},
   {k:"verified",  label:"Verified"},
   {k:"tags",      label:"Tags"},
   {k:"note",      label:"Note"}
@@ -1411,6 +1465,7 @@ const GUESS = [
   [/^id$/i, "xid"],
   [/(screen_?name|user_?name|username|handle|nickname)/i, "handle"],
   [/(profile_?url|profile_?link|twitter_?url|user_?url|^url$|^link$|permalink)/i, "profile"],
+  [/(dm_?image|send_?image|attach(?:ment)?s?|message_?image|mms_?image|image_?to_?send)/i, "image"],
   [/(profile_?image|avatar|image_?url|photo|picture|pfp)/i, "avatar"],
   [/(followers_?count|^followers$|follower_?count|fans)/i, "followers"],
   [/(following_?count|^following$|friends_?count)/i, "following"],
@@ -1487,6 +1542,7 @@ function buildLeads(rows, headerRow, map, listName){
       name: rec.name || "",
       bio: rec.bio || "",
       avatar: /^https?:\/\//i.test(rec.avatar||"") ? rec.avatar : "",
+      image: /^https?:\/\//i.test(rec.image||"") ? rec.image : "",
       website: rec.website || "",
       location: rec.location || "",
       followers: toNum(rec.followers),
@@ -1518,7 +1574,7 @@ function mergeLeads(incoming){
     const hit = (n.xid && byId.get(n.xid)) || (n.handle && byHandle.get(n.handle.toLowerCase()));
     if(hit){
       let changed = false;
-      ["name","bio","avatar","website","location","note","listName"].forEach(k => {
+      ["name","bio","avatar","image","website","location","note","listName"].forEach(k => {
         if(!hit[k] && n[k]){ hit[k] = n[k]; changed = true; }
       });
       ["followers","following","tweets"].forEach(k => {
@@ -1884,6 +1940,7 @@ function renderSheet(){
   $("#msgBox").value = messageFor(l);
   updateCount($("#msgCt"), $("#msgBox").value);
   $("#shWarn").innerHTML = setupWarnHTML(l) + (canPrefill(l) ? "" : idWarnHTML());
+  paintImageBar($("#shImgBar"), $("#shImgThumb"), l);
   autoGrow($("#msgBox"));
   syncSendLink();
 
@@ -1948,6 +2005,7 @@ function renderInfo(l){
     `<div class="f"><label for="if_bio">Bio</label><textarea id="if_bio" data-k="bio">${esc(l.bio)}</textarea></div>` +
     `<div class="two">${f("followers","Followers", l.followers, "number")}${f("location","Location", l.location)}</div>` +
     f("website","Website", l.website) +
+    f("image","Image to send (URL)", l.image, "text", "Shows up on the Message tab with a Copy image button, next to Copy.") +
     f("tags","Tags", l.tags.join(", "), "text", "Comma separated.") +
     f("listName","List", l.listName) +
     (() => {
@@ -2078,6 +2136,12 @@ $("#btnReroll").addEventListener("click", () => {
   syncSendLink();
 });
 $("#btnCopyMsg").addEventListener("click", () => { copyText($("#msgBox").value); toast("Copied"); });
+$("#btnCopyImg").addEventListener("click", async () => {
+  const l = leadById(state.leadId); if(!l || !l.image) return;
+  const ok = await copyImage(l.image);
+  if(ok) toast("Image copied — paste it into X");
+  else { window.open(l.image, "_blank", "noopener"); toast("Couldn't copy automatically — opened it so you can copy it by hand"); }
+});
 $("#btnSendSheet").addEventListener("click", () => {
   const l = leadById(state.leadId); if(!l) return;
   doSend(l, $("#msgBox").value);
@@ -2210,6 +2274,7 @@ function renderFocus(){
   $("#fMsg").value = messageFor(l);
   autoGrow($("#fMsg"));
   updateCount($("#fCt"), $("#fMsg").value);
+  paintImageBar($("#fImgBar"), $("#fImgThumb"), l);
   syncFocusLink();
   paceTick();
 }
@@ -2281,6 +2346,12 @@ $("#fReroll").addEventListener("click", () => {
   syncFocusLink();
 });
 $("#fCopy").addEventListener("click", () => { copyText($("#fMsg").value); toast("Copied"); });
+$("#fCopyImg").addEventListener("click", async () => {
+  const l = focusLead(); if(!l || !l.image) return;
+  const ok = await copyImage(l.image);
+  if(ok) toast("Image copied — paste it into X");
+  else { window.open(l.image, "_blank", "noopener"); toast("Couldn't copy automatically — opened it so you can copy it by hand"); }
+});
 $("#fSend").addEventListener("click", () => {
   const l = focusLead(); if(!l) return;
   doSend(l, $("#fMsg").value);
