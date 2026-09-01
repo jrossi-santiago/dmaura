@@ -132,6 +132,17 @@ Existing rows get gaps filled in — including a missing id, which upgrades them
 to one-tap — and nothing you have typed is overwritten. `sample-leads.csv` in
 this repo is a working example, including the awkward cases.
 
+A per-lead **image to send** is a separate column from the avatar (avatar is
+the lead's own profile photo, shown in the UI only). Map a column to
+"Image to send (URL)" — headers like `dm_image`, `send_image`, `attachment`,
+`message_image` auto-match — or paste an image URL into a lead's Info tab by
+hand. X's DM compose has no way to prefill an attachment the way it prefills
+text, so **Copy** (and Send/Open DM, which copies too) puts both the message
+text and the actual image bytes on the clipboard in one write — one paste
+into X picks up both. If the image's host blocks cross-origin fetches (or
+the fetch is too slow), it falls back to a text-only copy and opens the
+image in its own tab so it can be copied by hand as a second paste.
+
 ## Messages
 
 Templates use two kinds of braces:
@@ -250,7 +261,8 @@ create table if not exists leads (
   handle     text default '',
   name       text default '',
   bio        text default '',
-  avatar     text default '',
+  avatar     text default '',           -- the lead's own profile photo, display only
+  image      text default '',           -- image to attach when sending, copied via the Message tab
   website    text default '',
   location   text default '',
   followers  int  default 0,
@@ -273,9 +285,10 @@ create unique index if not exists leads_user_xid    on leads (user_id, xid)    w
 create unique index if not exists leads_user_handle on leads (user_id, lower(handle)) where handle <> '';
 create index if not exists leads_user_status on leads (user_id, status);
 
--- Older leads tables predate follow_up; this adds it without touching
--- anything else if the column is already there.
+-- Older leads tables predate follow_up and image; these add them without
+-- touching anything else if the columns are already there.
 alter table leads add column if not exists follow_up date;
+alter table leads add column if not exists image text default '';
 
 -- One row per deleted lead/template so a delete on one device reaches every
 -- other signed-in device instead of getting silently re-created by whichever
