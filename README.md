@@ -834,25 +834,36 @@ on the next charge) or just call `stripe.subscriptions.update` /
 and confirm `paid_customers.status` flips to `past_due` and the app shows
 the banner on next load.
 
-### Gift-card promo (optional)
+### Gift-card promo (removed — see below to bring it back)
 
-`app/index.html` has a small floating widget (top-right, wide viewports
-only, see `.giftcard` / `initGiftCard()`) offering a gift card in exchange
-for feedback. It only ever renders once someone is inside `.app`, which —
-see `enterApp()`/`revealApp()` above — already requires a `paid_customers`
-row with `status: 'active'`, i.e. a trial already started with a card on
-file. Claiming it goes one step further: a confirmation step
-(`confirmEndTrial()`) makes the person explicitly acknowledge that
-submitting ends their trial and charges their card **today**, then calls
-the `end-trial-now` Edge Function (deployed in step 6 above) to actually do
-that via `stripe.subscriptions.update(..., { trial_end: "now" })`, before
-posting their email to [Formspree](https://formspree.io/) (set
-`GIFT_CARD_FORM_URL` in `config.js` to your form's endpoint — the widget
-never renders if it's blank).
+**Status: removed from `app/index.html` as of 2026-09-01.** This used to be
+a small floating widget (top-right, wide viewports only) offering a free
+Monster energy drink in exchange for feedback: an email form (`.giftcard` /
+`initGiftCard()`), gated so it only ever rendered once someone was inside
+`.app` (already past the paywall — see `enterApp()`/`revealApp()` above —
+i.e. a trial already started with a card on file). Claiming it went one
+step further: a confirmation step made the person explicitly acknowledge
+that submitting ends their trial and charges their card **today**, then
+called the `end-trial-now` Edge Function to actually do that via
+`stripe.subscriptions.update(..., { trial_end: "now" })`, before posting
+their email to [Formspree](https://formspree.io/).
 
-To turn this off entirely, leave `GIFT_CARD_FORM_URL` blank in
-`config.js` — no other code changes needed, and `end-trial-now` never
-gets called.
+What was taken out: the `.giftcard` markup block and its CSS in
+`app/index.html`, the `initGiftCard()` function and its call site in
+`startApp()`, and the `GIFT_CARD_FORM_URL` key in `app/config.js`. Check
+`git log` for the commit that removed it (search for "gift card" /
+"Monster") to pull that code straight back via `git show <sha> -- app/`.
+
+The `end-trial-now` Supabase Edge Function (`supabase/functions/end-trial-now/`)
+was **left in place**, still deployed — it's dead code with the widget gone
+(nothing calls it), but redeploying the widget doesn't require redeploying
+the function too. See step 6 above if it ever needs redeploying from
+scratch.
+
+To bring the promo back: restore the removed `app/index.html` markup/CSS/JS
+and the `GIFT_CARD_FORM_URL` config key from git history, then set
+`GIFT_CARD_FORM_URL` in `config.js` to a Formspree endpoint — the widget
+never renders while it's blank.
 
 ---
 
