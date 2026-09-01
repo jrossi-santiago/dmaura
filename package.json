@@ -1,0 +1,9 @@
+{
+  "name": "dmaura",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@datafast/ai-crawl": "^1.0.9",
+    "@vercel/functions": "^3.9.5"
+  }
+}
