@@ -181,7 +181,7 @@ h2 i{font-family:var(--serif); font-style:italic; font-weight:400; color:var(--c
 @media (max-width:860px){
   .nav .links{position:absolute; left:0; right:0; top:100%; background:var(--cream-hi); flex-direction:column;
     align-items:flex-start; gap:0; border-bottom:1px solid var(--rule); max-height:0; overflow:hidden; transition:max-height .25s var(--ease)}
-  .nav.open .links{max-height:320px}
+  .nav.open .links{max-height:calc(100vh - 64px); overflow-y:auto}
   .nav .links a{padding:14px var(--pad); width:100%; border-top:1px solid var(--rule)}
   .burger{display:flex}
   .nav .btn.primary, .nav .btn.ghost{display:none}
