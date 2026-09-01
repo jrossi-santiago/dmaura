@@ -594,7 +594,7 @@ textarea.paste{width:100%;min-height:120px;border:1px solid var(--line);border-r
       <button class="tool" id="btnImport"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 20h16"/></svg> Import</button>
       <button class="tool" id="btnAdd"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add</button>
       <button class="tool" id="btnSelect" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Select</button>
-      <button class="tool" id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 20V8"/><path d="M8 12l4-4 4 4"/><path d="M4 4h16"/></svg> Export</button>
+      <button class="tool" id="btnExport"><svg viewBox="0 0 24 24"><path d="M12 20V8"/><path d="M8 12l4-4 4 4"/><path d="M4 4h16"/></svg> <span id="btnExportLabel">Export</span></button>
     </div>
 
     <div class="selbar hide" id="selbar">
@@ -1797,6 +1797,8 @@ function renderFilters(){
     .filter(({f,n}) => n > 0 || f.id === "queue" || f.id === "all" || f.id === state.filter)
     .map(({f,n}) => `<button class="chip" data-f="${f.id}" aria-pressed="${state.filter===f.id}">${esc(f.label)}<span class="n">${n}</span></button>`)
     .join("");
+  const active = FILTERS.find(f => f.id === state.filter) || FILTERS[0];
+  $("#btnExportLabel").textContent = "Export " + active.label;
 }
 
 function leadHTML(l){
